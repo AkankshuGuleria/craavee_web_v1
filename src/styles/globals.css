@@ -1,0 +1,447 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- Craavee fresh-tech brand tokens ---- */
+  --color-mango: #ff8a3d;
+  --color-brand: #178a50;
+  --color-brand-deep: #0e2a1d;
+
+  --color-paper: #f3f5ec;
+  --color-inkdeep: #122019;
+
+  /* ---- Immersive base (neutral off-black, never pure black) ---- */
+  --color-obsidian: #0a0b0d;
+  --color-charcoal: #141619;
+  --color-concrete: #1d2026;
+  --color-ivory: #f4f5f7;
+  --color-stone: #9ba1ab;
+  --color-slate: #6b7280;
+  --color-line: rgba(255, 255, 255, 0.08);
+
+  /* ---- Single accent (taste skill: Color Consistency Lock) ----
+     Warm amber "Black and Tan" — one confident accent, saturation < 80%.
+     Cyan/Magenta are the SAME hue family used only for ambient wash. */
+  --color-violet: #e8a33d;
+  --color-violet-strong: #d68f2a;
+  --color-cyan: #f4d7a8;
+  --color-magenta: #e08a3c;
+  --color-lime: #34d399;
+  --color-amber: #e8a33d;
+  --color-rose: #fb7185;
+
+  /* legacy alias kept for compatibility */
+  --color-ember: #e8a33d;
+  --color-ember-hover: #d68f2a;
+  --color-signal: #34d399;
+  --color-warning: #fbbf24;
+  --color-alert: #fb7185;
+  --color-whisper-border: rgba(255, 255, 255, 0.08);
+  --color-diffused-shadow: rgba(232, 163, 61, 0.35);
+
+  --font-display: "Outfit", "Cabinet Grotesk", sans-serif;
+  --font-body: "Geist", "Satoshi", sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", monospace;
+
+  --radius-cravee: 1rem;
+  --radius-cravee-lg: 1.5rem;
+  --radius-pill: 9999px;
+}
+
+@keyframes shimmer-slide {
+  to {
+    transform: translateX(calc(100cqw - 100%));
+  }
+}
+@keyframes spin-around {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap, 1rem)));
+  }
+}
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% - var(--gap, 1rem)));
+  }
+}
+@keyframes aurora {
+  to {
+    background-position: 200% center;
+  }
+}
+
+@layer base {
+  :root {
+    --paper: #f3f5ec;
+    --ink: #122019;
+    --ink-soft: #3e4f44;
+    --green: #178a50;
+    --green-deep: #0e2a1d;
+    --mango: #ff8a3d;
+    --cream: #fff9ef;
+    --line: rgba(18, 32, 25, 0.08);
+    --background: var(--paper);
+    --foreground: var(--ink);
+  }
+
+  * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    line-height: 1.65;
+    overflow-x: hidden;
+  }
+
+  /* Film grain over the whole environment — fixed, never scrolls */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 54;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .safe-bottom {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+}
+
+@layer components {
+  /* ============ CRAAVEE — FRESH-TECH SPATIAL COMMERCE ============ */
+
+  /* Atmosphere: radial light sources, never linear gradients */
+  .atmosphere {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(42% 52% at 12% 8%, rgba(23, 138, 80, 0.14), transparent 62%),
+      radial-gradient(38% 46% at 88% 18%, rgba(255, 138, 61, 0.10), transparent 60%),
+      radial-gradient(50% 55% at 70% 95%, rgba(163, 230, 53, 0.08), transparent 65%);
+  }
+  .atmosphere-deep {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(45% 55% at 20% 15%, rgba(23, 138, 80, 0.35), transparent 60%),
+      radial-gradient(40% 50% at 85% 80%, rgba(163, 230, 53, 0.12), transparent 62%);
+  }
+
+  /* Claymorphism card — tactile, sage-tinted */
+  .clay-card {
+    background: linear-gradient(150deg, #ffffff 0%, #f4f7ee 100%);
+    border-radius: 24px;
+    border: 2.5px solid rgba(255, 255, 255, 0.95);
+    box-shadow:
+      6px 10px 28px -10px rgba(14, 42, 29, 0.16),
+      -5px -5px 16px -6px rgba(255, 255, 255, 0.9),
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.3s ease-out;
+  }
+  .clay-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      8px 16px 36px -12px rgba(14, 42, 29, 0.22),
+      -5px -5px 16px -6px rgba(255, 255, 255, 0.9),
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  /* Glassmorphism — floating environment surfaces */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.58);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow:
+      0 20px 44px -18px rgba(14, 42, 29, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+  .glass-bar {
+    background: rgba(243, 245, 236, 0.72);
+    backdrop-filter: blur(22px) saturate(1.7);
+    -webkit-backdrop-filter: blur(22px) saturate(1.7);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 10px 34px -20px rgba(14, 42, 29, 0.28);
+  }
+
+  /* Spotlight card — cursor-tracked radial highlight */
+  .spotlight-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .spotlight-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    background: radial-gradient(
+      260px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(23, 138, 80, 0.10),
+      transparent 65%
+    );
+    pointer-events: none;
+  }
+  .spotlight-card:hover::before {
+    opacity: 1;
+  }
+
+  /* Clay button */
+  .btn-clay {
+    background: linear-gradient(145deg, #1ea35d 0%, #178a50 100%);
+    color: #ffffff;
+    border-radius: 9999px;
+    box-shadow:
+      0 10px 24px -8px rgba(23, 138, 80, 0.5),
+      inset 0 2px 0 rgba(255, 255, 255, 0.32),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.09);
+    transition: transform 0.16s ease-out, box-shadow 0.16s ease-out,
+      filter 0.16s ease-out;
+  }
+  .btn-clay:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow:
+      0 14px 30px -8px rgba(23, 138, 80, 0.58),
+      inset 0 2px 0 rgba(255, 255, 255, 0.32),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.09);
+  }
+  .btn-clay:active {
+    transform: translateY(2px) scale(0.98);
+    box-shadow:
+      0 4px 12px -4px rgba(23, 138, 80, 0.4),
+      inset 0 2px 6px rgba(0, 0, 0, 0.16);
+  }
+
+  /* Soft clay input */
+  .clay-input {
+    background: #f1f4e9;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    box-shadow:
+      inset 3px 3px 8px rgba(14, 42, 29, 0.07),
+      inset -2px -2px 6px rgba(255, 255, 255, 0.92);
+    transition: border-color 0.2s ease, background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .clay-input:focus,
+  .clay-input:focus-within {
+    outline: none;
+    border-color: #86efac;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 4px rgba(134, 239, 172, 0.25),
+      inset 0 0 0 1px rgba(23, 138, 80, 0.1);
+  }
+
+  /* Skeleton shimmer for loading grids */
+  .skeleton-light {
+    background: linear-gradient(
+      90deg,
+      rgba(14, 42, 29, 0.06) 25%,
+      rgba(14, 42, 29, 0.13) 50%,
+      rgba(14, 42, 29, 0.06) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 12px;
+  }
+
+  /* Ambient float — max 2 per viewport */
+  .float-soft {
+    animation: float-soft 4.5s ease-in-out infinite;
+  }
+  .drift-slow {
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+
+  @keyframes float-soft {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-9px);
+    }
+  }
+  @keyframes drift {
+    from {
+      transform: translate3d(-2%, -1%, 0) scale(1);
+    }
+    to {
+      transform: translate3d(2%, 2%, 0) scale(1.05);
+    }
+  }
+
+  /* 3D helpers */
+  .tilt-scene {
+    perspective: 1100px;
+  }
+  .tilt-card-3d {
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .translate-z {
+    transform: translateZ(46px);
+  }
+
+  /* Glass surface tuned for the immersive violet theme */
+  .glass-panel {
+    background: rgba(29, 32, 38, 0.45);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 24px 60px -30px rgba(232, 163, 61, 0.35);
+  }
+
+  /* Primary CTA — warm amber with a soft inner highlight (no harsh glow) */
+  .clay-btn {
+    background-color: #e8a33d;
+    color: #0a0b0d;
+    box-shadow:
+      0 8px 30px -8px rgba(232, 163, 61, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  }
+  .clay-btn:hover {
+    filter: brightness(1.05);
+    box-shadow:
+      0 12px 40px -8px rgba(232, 163, 61, 0.65),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  .clay-btn:active {
+    transform: translateY(1px) scale(0.98);
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(30, 19, 64, 0.5) 25%,
+      rgba(56, 38, 110, 0.8) 50%,
+      rgba(30, 19, 64, 0.5) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite linear;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  .perspective {
+    perspective: 1100px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  /* ---- 21st.dev / magicui animation utilities (var-driven) ---- */
+  .animate-shimmer-slide {
+    animation: shimmer-slide var(--speed, 3s) infinite linear;
+  }
+  .animate-spin-around {
+    animation: spin-around calc(var(--speed, 3s) * 2) infinite linear;
+  }
+  .animate-marquee {
+    animation: marquee var(--duration, 40s) linear infinite;
+  }
+  .animate-marquee-vertical {
+    animation: marquee-vertical var(--duration, 40s) linear infinite;
+  }
+  .animate-aurora {
+    animation: aurora var(--speed, 10s) linear infinite;
+    background-size: 200% auto;
+  }
+
+  /* Grain / noise layer — fixed, pointer-events-none only */
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Immersive aurora wash — single warm-amber hue family (taste: no multi-accent glow) */
+  .aurora-wash {
+    background:
+      radial-gradient(40% 60% at 15% 10%, rgba(232, 163, 61, 0.30), transparent 60%),
+      radial-gradient(45% 55% at 85% 20%, rgba(244, 215, 168, 0.18), transparent 60%),
+      radial-gradient(40% 50% at 70% 90%, rgba(224, 138, 60, 0.20), transparent 60%);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(22, 163, 74, 0.35);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(22, 163, 74, 0.55);
+}
+
+.paper-bg { background-color: var(--paper); }
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Reduced motion: collapse perpetual loops + transforms */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
