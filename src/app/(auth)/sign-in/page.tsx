@@ -31,20 +31,20 @@ function SignInForm() {
         href="/"
         className="absolute left-5 top-6 inline-flex items-center gap-2 sm:left-10"
       >
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-green-600 font-display text-base font-black text-white shadow-[0_8px_18px_-6px_rgba(22,163,74,0.5)]">
+        <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-orange-400 to-rose-500 font-display text-base font-black text-white shadow-[0_8px_18px_-6px_rgba(255,138,61,0.7)]">
           C
         </span>
-        <span className="font-display text-lg font-extrabold tracking-tight text-neutral-900">
+        <span className="font-display text-lg font-extrabold tracking-tight text-white">
           Craavee
         </span>
       </Link>
 
       <div className="mx-auto w-full max-w-sm">
         <Reveal>
-          <h1 className="font-display text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-tight tracking-tight text-neutral-900">
+          <h1 className="font-display text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold leading-tight tracking-tight text-white">
             Sign in to order
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-neutral-500">
+          <p className="mt-3 text-sm leading-relaxed text-white/55">
             Browsing is open to everyone. Sign in when you're ready to get
             something delivered.
           </p>
@@ -53,7 +53,7 @@ function SignInForm() {
         <Reveal delay={0.08}>
           <form onSubmit={onSubmit} className="mt-8 space-y-4">
             <div className="clay-input flex items-center gap-3 px-5 py-3.5">
-              <EnvelopeSimple size={18} weight="bold" className="shrink-0 text-neutral-400" />
+              <EnvelopeSimple size={18} weight="bold" className="shrink-0 text-white/40" />
               <input
                 type="email"
                 required
@@ -61,7 +61,7 @@ function SignInForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 aria-label="Email address"
-                className="w-full bg-transparent text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+                className="w-full bg-transparent text-sm text-white/90 placeholder:text-white/35 focus:outline-none"
               />
             </div>
 
@@ -97,7 +97,7 @@ function SignInForm() {
         </Reveal>
 
         <Reveal delay={0.14}>
-          <p className="mt-6 text-xs text-neutral-400">
+          <p className="mt-6 text-xs text-white/35">
             Demo mode — any email signs you in instantly.
           </p>
         </Reveal>
@@ -113,24 +113,25 @@ export default function SignInPage() {
         <SignInForm />
       </Suspense>
 
-      {/* visual side — glass bento with floating clay tiles */}
-      <div className="relative hidden overflow-hidden bg-gradient-to-br from-green-50 via-[#fafaf7] to-yellow-50 lg:block lg:w-1/2">
+      {/* visual side — aurora bento with floating glass tiles */}
+      <div className="relative hidden overflow-hidden bg-[#0b0e14] lg:block lg:w-1/2">
+        <div aria-hidden className="atmosphere-deep absolute inset-0 drift-slow" />
         <div
           aria-hidden
-          className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-green-200/50 blur-3xl float-soft"
+          className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl float-soft"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute bottom-16 right-10 h-56 w-56 rounded-full bg-yellow-200/60 blur-3xl"
+          className="pointer-events-none absolute bottom-16 right-10 h-56 w-56 rounded-full bg-violet-500/25 blur-3xl"
         />
 
         <div className="relative flex h-full items-center justify-center p-12 tilt-scene">
           <div className="grid w-full max-w-md grid-cols-2 gap-4 tilt-card-3d">
             {[
-              { emoji: "🥦", label: "Fresh veg", cls: "bg-white", delay: "0s" },
-              { emoji: "🥛", label: "Dairy", cls: "glass-card", delay: "0.6s" },
-              { emoji: "🍜", label: "Instant", cls: "glass-card", delay: "1.2s" },
-              { emoji: "🍦", label: "Frozen", cls: "bg-white", delay: "1.8s" },
+              { emoji: "🥦", label: "Fresh veg", cls: "glass-surface", delay: "0s" },
+              { emoji: "🥛", label: "Dairy", cls: "glass-surface", delay: "0.6s" },
+              { emoji: "🍜", label: "Instant", cls: "glass-surface", delay: "1.2s" },
+              { emoji: "🍦", label: "Frozen", cls: "glass-surface", delay: "1.8s" },
             ].map((t) => (
               <Reveal key={t.label}>
                 <div
@@ -138,7 +139,7 @@ export default function SignInPage() {
                   style={{ animationDelay: t.delay }}
                 >
                   <span className="text-4xl">{t.emoji}</span>
-                  <span className="text-xs font-bold text-neutral-600">{t.label}</span>
+                  <span className="text-xs font-bold text-white/70">{t.label}</span>
                 </div>
               </Reveal>
             ))}
@@ -146,7 +147,7 @@ export default function SignInPage() {
         </div>
 
         <div className="absolute bottom-10 left-12 right-12">
-          <div className="glass-card inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-green-700">
+          <div className="glass-card inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold text-emerald-300">
             <Lightning size={13} weight="fill" />
             Delivered fast · tracked live
           </div>

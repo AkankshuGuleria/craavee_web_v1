@@ -55,7 +55,7 @@ export default function ShopPage() {
   };
 
   return (
-    <main className="relative min-h-[100dvh] pb-36" style={{ backgroundColor: "var(--paper)" }}>
+    <main className="relative min-h-[100dvh] pb-36 bg-[#0a0c10]">
       <SiteNav onOpenSearch={() => setSearchOpen(true)} />
       <div aria-hidden className="atmosphere pointer-events-none absolute inset-x-0 top-0 h-[520px]" />
 
@@ -63,11 +63,11 @@ export default function ShopPage() {
         <Reveal>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="font-display text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold tracking-tight text-neutral-900">
+              <h1 className="font-display text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold tracking-tight text-white">
                 What's your craving?
               </h1>
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-500">
-                <Lightning size={14} weight="fill" className="text-green-600" />
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-white/50">
+                <Lightning size={14} weight="fill" className="text-orange-400" />
                 Delivered fast, right where you are.
               </p>
             </div>
@@ -78,20 +78,20 @@ export default function ShopPage() {
               aria-label="Change delivery address"
               className="clay-card flex cursor-pointer items-center gap-3 px-4 py-2.5"
             >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-green-100 text-green-700">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-orange-400/15 text-orange-300">
                 <MapPin weight="bold" size={18} />
               </span>
               <span className="min-w-0 text-left">
-                <span className="block text-[10px] font-bold uppercase tracking-wide text-neutral-400">
+                <span className="block text-[10px] font-bold uppercase tracking-wide text-white/40">
                   {address ? "Delivering to" : "No address yet"}
                 </span>
-                <span className="flex items-center gap-1 text-sm font-semibold text-neutral-800">
+                <span className="flex items-center gap-1 text-sm font-semibold text-white/90">
                   <span className="max-w-[200px] truncate">
                     {address
                       ? `${address.label} · ${formatShort(address)}`
                       : "Set your address"}
                   </span>
-                  <CaretDown size={12} weight="bold" className="shrink-0 text-neutral-400" />
+                  <CaretDown size={12} weight="bold" className="shrink-0 text-white/40" />
                 </span>
               </span>
             </button>
@@ -101,13 +101,13 @@ export default function ShopPage() {
         {/* search */}
         <Reveal delay={0.06}>
           <div className="clay-input mt-5 flex items-center gap-3 px-5 py-3.5">
-            <MagnifyingGlass size={18} className="shrink-0 text-neutral-400" weight="bold" />
+            <MagnifyingGlass size={18} className="shrink-0 text-white/40" weight="bold" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               type="text"
               placeholder="Search for atta, dal, oil…"
-              className="w-full bg-transparent text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+              className="w-full bg-transparent text-sm text-white/90 placeholder:text-white/35 focus:outline-none"
             />
           </div>
         </Reveal>
@@ -120,10 +120,10 @@ export default function ShopPage() {
                 key={cat}
                 onClick={() => setActive(cat)}
                 className={cn(
-                  "whitespace-nowrap rounded-full border-2 px-4 py-2 text-xs font-bold transition-all active:scale-95",
+                  "whitespace-nowrap rounded-full border px-4 py-2 text-xs font-bold transition-[background-color,border-color,color,box-shadow,transform] active:scale-95",
                   active === cat
-                    ? "border-green-600 bg-green-600 text-white shadow-[0_8px_18px_-6px_rgba(22,163,74,0.5)]"
-                    : "border-white bg-white text-neutral-500 shadow-[3px_4px_12px_-4px_rgba(21,94,54,0.15)] hover:text-green-700"
+                    ? "border-transparent bg-gradient-to-br from-orange-400 to-rose-500 text-white shadow-[0_10px_24px_-8px_rgba(255,138,61,0.7)]"
+                    : "border-white/12 bg-white/[0.06] text-white/55 hover:border-white/30 hover:text-white"
                 )}
               >
                 {cat}
@@ -136,10 +136,10 @@ export default function ShopPage() {
       <section className="mx-auto mt-6 max-w-7xl px-4 sm:px-6">
         {filtered.length === 0 ? (
           <div className="clay-card p-14 text-center">
-            <p className="font-display text-lg font-bold text-neutral-900">
+            <p className="font-display text-lg font-bold text-white">
               Nothing matches
             </p>
-            <p className="mt-2 text-sm text-neutral-500">Try another search.</p>
+            <p className="mt-2 text-sm text-white/45">Try another search.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

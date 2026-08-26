@@ -46,16 +46,16 @@ export default function AdminPackingPage() {
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h3 className="font-display text-base font-extrabold text-neutral-900">
+                <h3 className="font-display text-base font-extrabold text-white">
                   {order.id}
                 </h3>
                 {order.priority && (
-                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-orange-600">
+                  <span className="rounded-full bg-orange-400/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-orange-300">
                     Priority
                   </span>
                 )}
               </div>
-              <span className="text-xs font-semibold text-neutral-400">
+              <span className="text-xs font-semibold text-white/45">
                 {order.location}
               </span>
             </div>
@@ -64,14 +64,14 @@ export default function AdminPackingPage() {
               {order.items.map((item, itemIndex) => (
                 <div
                   key={itemIndex}
-                  className="flex items-center justify-between border-b-2 border-dashed border-neutral-100 py-2 last:border-0"
+                  className="flex items-center justify-between border-b border-dashed border-white/10 py-2 last:border-0"
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`grid h-5 w-5 place-items-center rounded-md border-2 ${
+                      className={`grid h-5 w-5 place-items-center rounded-md ${
                         item.packed
-                          ? "border-green-600 bg-green-600 text-white"
-                          : "border-neutral-300"
+                          ? "bg-emerald-500 text-white"
+                          : "border border-white/25"
                       }`}
                     >
                       {item.packed && <Check size={11} weight="bold" />}
@@ -79,14 +79,14 @@ export default function AdminPackingPage() {
                     <span
                       className={`text-sm ${
                         item.packed
-                          ? "font-medium text-neutral-300 line-through"
-                          : "font-semibold text-neutral-800"
+                          ? "font-medium text-white/30 line-through"
+                          : "font-semibold text-white/85"
                       }`}
                     >
                       {item.name}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-neutral-500">x{item.qty}</span>
+                  <span className="text-xs font-bold tabular-nums text-white/50">x{item.qty}</span>
                 </div>
               ))}
             </div>

@@ -8,7 +8,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CursorGlow, ScrollProgress } from "@/components/interactive";
@@ -307,18 +307,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ToastContext.Provider value={toastValue}>
-      <AddressContext.Provider value={{ address, saveAddress }}>
-        <AuthContext.Provider value={authValue}>
-          <CartContext.Provider value={cartValue}>
-            <CursorGlow />
-            <ScrollProgress />
-            <div className="grain" aria-hidden />
-            {children}
-            <ToastViewport items={toasts} />
-          </CartContext.Provider>
-        </AuthContext.Provider>
-      </AddressContext.Provider>
-    </ToastContext.Provider>
+    <MotionConfig reducedMotion="user">
+      <ToastContext.Provider value={toastValue}>
+        <AddressContext.Provider value={{ address, saveAddress }}>
+          <AuthContext.Provider value={authValue}>
+            <CartContext.Provider value={cartValue}>
+              <CursorGlow />
+              <ScrollProgress />
+              {children}
+              <ToastViewport items={toasts} />
+            </CartContext.Provider>
+          </AuthContext.Provider>
+        </AddressContext.Provider>
+      </ToastContext.Provider>
+    </MotionConfig>
   );
 }

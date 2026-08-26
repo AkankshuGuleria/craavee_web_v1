@@ -46,11 +46,11 @@ export default function TrackOrderPage() {
           <Link
             href="/shop"
             aria-label="Back"
-            className="grid h-10 w-10 place-items-center rounded-xl border-2 border-white bg-white text-neutral-700 shadow-[3px_4px_12px_-4px_rgba(21,94,54,0.18)] transition-transform active:scale-95"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/15 bg-white/[0.08] text-white/85 transition-transform hover:border-white/30 active:scale-95"
           >
             <ArrowLeft size={18} weight="bold" />
           </Link>
-          <h1 className="font-display text-lg font-extrabold tracking-tight text-neutral-900">
+          <h1 className="font-display text-lg font-extrabold tracking-tight text-white">
             Live tracking
           </h1>
           <div className="w-10" />
@@ -79,22 +79,20 @@ export default function TrackOrderPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-white/40">
                     Status
                   </p>
-                  <p className="inline-flex items-center gap-1.5 text-sm font-bold text-green-700">
+                  <p className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-300">
                     <span className="relative flex h-2.5 w-2.5">
-                      {!reduce && (
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                      )}
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-600" />
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                     </span>
                     On its way
                   </p>
                 </div>
               </div>
-              <div className="relative mt-5 flex items-center gap-1.5 border-t-2 border-dashed border-neutral-200/70 pt-4 text-xs font-medium text-neutral-500">
-                <MapPin size={14} weight="fill" className="shrink-0 text-green-600" />
+              <div className="relative mt-5 flex items-center gap-1.5 border-t border-dashed border-white/12 pt-4 text-xs font-medium text-white/55">
+                <MapPin size={14} weight="fill" className="shrink-0 text-orange-400" />
                 {address
                   ? `${address.label} · ${formatShort(address)}`
                   : "Delivering to your address"}
@@ -105,9 +103,9 @@ export default function TrackOrderPage() {
 
         {/* stepper */}
         <div className="relative mt-6">
-          <div className="absolute bottom-9 left-[19px] top-9 w-1 rounded-full bg-neutral-200/80" />
+          <div className="absolute bottom-9 left-[19px] top-9 w-1 rounded-full bg-white/10" />
           <motion.div
-            className="absolute left-[19px] top-9 w-1 rounded-full bg-gradient-to-b from-green-500 to-green-600"
+            className="absolute left-[19px] top-9 w-1 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600"
             initial={{ height: 0 }}
             animate={{ height: `${progressPct}%` }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
@@ -120,17 +118,17 @@ export default function TrackOrderPage() {
               return (
                 <motion.div
                   key={stage.id}
-                  initial={reduce ? false : { opacity: 0, x: -18 }}
+                  initial={{ opacity: 0, x: -18 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: reduce ? 0 : index * 0.08 }}
                   className="flex items-start gap-4"
                 >
                   <div
-                    className={`relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full transition-all ${
+                    className={`relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full transition-[background-color,border-color,color,box-shadow,transform] ${
                       completed
-                        ? "bg-green-600 text-white shadow-[0_8px_18px_-6px_rgba(22,163,74,0.55)]"
-                        : "border-2 border-white bg-white text-neutral-300 shadow-[3px_4px_12px_-4px_rgba(21,94,54,0.15)]"
-                    } ${active ? "scale-110 ring-4 ring-green-200" : ""}`}
+                        ? "bg-emerald-600 text-white shadow-[0_8px_18px_-6px_rgba(16,185,129,0.65)]"
+                        : "border border-white/15 bg-white/[0.07] text-white/35"
+                    } ${active ? "scale-110 ring-4 ring-emerald-400/20" : ""}`}
                   >
                     {completed ? <Check size={17} weight="bold" /> : stage.id}
                   </div>
@@ -138,22 +136,22 @@ export default function TrackOrderPage() {
                     <h3
                       className={`font-display text-sm ${
                         completed || active
-                          ? "font-extrabold text-neutral-900"
-                          : "font-semibold text-neutral-400"
+                          ? "font-extrabold text-white"
+                          : "font-semibold text-white/40"
                       }`}
                     >
                       {stage.label}
                     </h3>
                     <p
                       className={`mt-0.5 text-xs ${
-                        active ? "font-semibold text-green-700" : "text-neutral-400"
+                        active ? "font-semibold text-emerald-300" : "text-white/40"
                       }`}
                     >
                       {stage.desc}
                     </p>
                   </div>
                   {active && (
-                    <span className="ml-auto mt-2 rounded-full bg-green-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-green-700">
+                    <span className="ml-auto mt-2 rounded-full bg-emerald-400/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-emerald-300">
                       Now
                     </span>
                   )}
@@ -166,16 +164,16 @@ export default function TrackOrderPage() {
         {/* runner card */}
         <Reveal delay={0.15}>
           <div className="glass-card mt-6 flex items-center gap-4 p-4">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-green-500 to-green-700 text-lg font-black text-white shadow-[0_8px_18px_-6px_rgba(22,163,74,0.5)]">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 text-lg font-black text-white shadow-[0_8px_18px_-6px_rgba(255,138,61,0.6)]">
               A
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-bold text-neutral-900">Alex M.</h3>
-              <p className="text-xs text-neutral-500">Your runner · on the way</p>
+              <h3 className="text-sm font-bold text-white">Alex M.</h3>
+              <p className="text-xs text-white/50">Your runner · on the way</p>
             </div>
             <button
               aria-label="Call runner"
-              className="cursor-pointer rounded-full border-2 border-green-600/70 bg-white px-4 py-2 text-xs font-bold text-green-700 transition-all hover:bg-green-600 hover:text-white active:scale-95"
+              className="cursor-pointer rounded-full border border-sky-300/40 bg-sky-400/10 px-4 py-2 text-xs font-bold text-sky-200 transition-[background-color,border-color,color,box-shadow,transform] hover:bg-sky-400/20 active:scale-95"
             >
               <span className="inline-flex items-center gap-1.5">
                 <Phone size={13} weight="bold" /> Call

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   motion,
   useMotionValue,
@@ -15,7 +15,10 @@ import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /* CursorGlow — ambient radial highlight that tracks the pointer.      */
-/* Uses motion values only (no React re-render per frame).            */
+/* Motion values only (no React re-render per frame). The gradient is  */
+/* pre-softened by its own falloff — no filter: blur() here, which     */
+/* would force a large-layer repaint on every pointer frame. Fine-     */
+/* pointer devices only; it does nothing on touch.                     */
 /* ------------------------------------------------------------------ */
 export function CursorGlow() {
   const x = useMotionValue(-200);
@@ -23,28 +26,36 @@ export function CursorGlow() {
   const sx = useSpring(x, { stiffness: 120, damping: 22, mass: 0.4 });
   const sy = useSpring(y, { stiffness: 120, damping: 22, mass: 0.4 });
   const reduce = useReducedMotion();
+  const [finePointer, setFinePointer] = useState(false);
 
   useEffect(() => {
     if (reduce) return;
+    const mq = window.matchMedia("(pointer: fine)");
+    setFinePointer(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setFinePointer(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [reduce]);
+
+  useEffect(() => {
+    if (!finePointer || reduce) return;
     const onMove = (e: MouseEvent) => {
       x.set(e.clientX);
       y.set(e.clientY);
     };
-    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousemove", onMove, { passive: true });
     return () => window.removeEventListener("mousemove", onMove);
-  }, [reduce, x, y]);
+  }, [finePointer, reduce, x, y]);
 
   return (
     <motion.div
       aria-hidden
-      className="pointer-events-none fixed left-0 top-0 z-[60] h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full"
+      className="pointer-events-none fixed left-0 top-0 z-[60] h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full motion-reduce:opacity-0"
       style={{
         x: sx,
         y: sy,
         background:
           "radial-gradient(circle, rgba(34,197,94,0.16), rgba(134,239,172,0.07) 40%, transparent 70%)",
-        filter: "blur(28px)",
-        opacity: reduce ? "0" : "1",
       }}
     />
   );
@@ -170,11 +181,10 @@ export function Reveal({
   y?: number;
   amount?: number;
 }) {
-  const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
-      initial={reduce ? false : { opacity: 0, y }}
+      initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount }}
       transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}

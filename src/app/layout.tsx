@@ -1,12 +1,25 @@
 import type { Metadata } from "next";
-import { Outfit, Geist, Geist_Mono } from "next/font/google";
+import {
+  Outfit,
+  Geist,
+  Geist_Mono,
+  Space_Grotesk,
+} from "next/font/google";
 import "../styles/globals.css";
 import { Providers } from "@/components/providers";
+import { CraaveeIntroGate } from "@/components/layout/craavee-intro-gate";
 
 const display = Outfit({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["400", "500", "600", "700", "800"],
+});
+
+/* Premium geometric display face for hero headlines */
+const grotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-grotesk",
+  weight: ["500", "600", "700"],
 });
 
 const body = Geist({
@@ -33,9 +46,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${display.variable} ${body.variable} ${mono.variable} font-body antialiased bg-[#fafaf7] text-neutral-900 min-h-[100dvh]`}
+        className={`${grotesk.variable} ${display.variable} ${body.variable} ${mono.variable} font-body antialiased bg-[#0a0c10] text-slate-100 min-h-[100dvh]`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <CraaveeIntroGate>{children}</CraaveeIntroGate>
+        </Providers>
       </body>
     </html>
   );

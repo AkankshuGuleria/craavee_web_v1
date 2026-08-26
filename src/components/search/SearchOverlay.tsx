@@ -99,14 +99,14 @@ export function SearchOverlay({
             exit={{ y: -20, opacity: 0, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 300, damping: 28 }}
             onClick={(e) => e.stopPropagation()}
-            className="mx-auto mt-20 w-[min(94vw,640px)] overflow-hidden rounded-[28px] border border-white/70 bg-white/85 shadow-[0_40px_90px_-24px_rgba(14,42,29,0.5)] backdrop-blur-2xl"
+            className="glass-surface mx-auto mt-20 w-[min(94vw,640px)] overflow-hidden rounded-[28px] shadow-[0_40px_90px_-24px_rgba(0,0,0,0.85)]"
             role="dialog"
             aria-modal="true"
             aria-label="Search products"
           >
             {/* input row */}
-            <div className="flex items-center gap-3 border-b border-neutral-200/70 px-5 py-4">
-              <MagnifyingGlass size={20} weight="bold" className="shrink-0 text-green-600" />
+            <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+              <MagnifyingGlass size={20} weight="bold" className="shrink-0 text-orange-400" />
               <input
                 ref={inputRef}
                 value={query}
@@ -114,12 +114,12 @@ export function SearchOverlay({
                 onKeyDown={(e) => e.key === "Enter" && goSearch(query)}
                 placeholder="Search atta, dal, milk, snacks…"
                 aria-label="Search query"
-                className="w-full bg-transparent text-base font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+                className="w-full bg-transparent text-base font-medium text-white placeholder:text-white/35 focus:outline-none"
               />
               <button
                 onClick={onClose}
                 aria-label="Close search"
-                className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+                className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-full text-white/45 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <X size={16} weight="bold" />
               </button>
@@ -129,7 +129,7 @@ export function SearchOverlay({
               {/* live results */}
               {results.length > 0 && (
                 <div className="mb-2">
-                  <p className="px-2 pb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-neutral-400">
+                  <p className="px-2 pb-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white/40">
                     Products
                   </p>
                   {results.map((p, i) => (
@@ -139,7 +139,7 @@ export function SearchOverlay({
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
                       onClick={() => goSearch(p.name)}
-                      className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-green-50"
+                      className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-white/[0.07]"
                     >
                       <img
                         src={p.image}
@@ -147,12 +147,12 @@ export function SearchOverlay({
                         className="h-11 w-11 shrink-0 rounded-xl object-cover"
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-bold text-neutral-900">
+                        <span className="block truncate text-sm font-bold text-white/90">
                           {p.name}
                         </span>
-                        <span className="text-xs text-neutral-400">{p.category}</span>
+                        <span className="text-xs text-white/40">{p.category}</span>
                       </span>
-                      <span className="font-display text-sm font-extrabold text-green-700">
+                      <span className="font-display text-sm font-extrabold tabular-nums text-emerald-300">
                         ₹{p.price}
                       </span>
                     </motion.button>
@@ -161,7 +161,7 @@ export function SearchOverlay({
               )}
 
               {/* popular */}
-              <p className="flex items-center gap-1.5 px-2 pb-2 pt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-neutral-400">
+              <p className="flex items-center gap-1.5 px-2 pb-2 pt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white/40">
                 <Flame size={11} weight="fill" className="text-mango" /> Popular right now
               </p>
               <div className="flex flex-wrap gap-2 px-1 pb-3">
@@ -169,7 +169,7 @@ export function SearchOverlay({
                   <button
                     key={term}
                     onClick={() => goSearch(term)}
-                    className="cursor-pointer rounded-full border border-neutral-200 bg-white px-3.5 py-1.5 text-xs font-bold text-neutral-600 transition-all hover:border-green-400 hover:text-green-700 active:scale-95"
+                    className="cursor-pointer rounded-full border border-white/12 bg-white/[0.06] px-3.5 py-1.5 text-xs font-bold text-white/65 transition-[background-color,border-color,color,box-shadow,transform] hover:border-orange-400/50 hover:text-white active:scale-95"
                   >
                     {term}
                   </button>
@@ -179,7 +179,7 @@ export function SearchOverlay({
               {/* recents */}
               {recents.length > 0 && !query && (
                 <>
-                  <p className="flex items-center gap-1.5 px-2 pb-2 pt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-neutral-400">
+                  <p className="flex items-center gap-1.5 px-2 pb-2 pt-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white/40">
                     <ClockCounterClockwise size={11} weight="bold" /> Recent searches
                   </p>
                   <div className="flex flex-wrap gap-2 px-1">
@@ -187,7 +187,7 @@ export function SearchOverlay({
                       <button
                         key={term}
                         onClick={() => goSearch(term)}
-                        className="cursor-pointer rounded-full bg-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-800"
+                        className="cursor-pointer rounded-full bg-white/[0.08] px-3.5 py-1.5 text-xs font-semibold text-white/60 transition-colors hover:bg-white/[0.14] hover:text-white"
                       >
                         {term}
                       </button>

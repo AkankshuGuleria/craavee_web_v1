@@ -28,7 +28,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             "w-full px-4 py-3 rounded-cravee bg-concrete border border-whisper-border",
             "text-ivory placeholder:text-slate",
             "focus:outline-none focus:ring-2 focus:ring-ember/50 focus:border-transparent",
-            "transition-all duration-200",
+            "transition-[background-color,border-color,color,box-shadow,transform] duration-200",
             error && "border-alert focus:ring-alert/50",
             className
           )}

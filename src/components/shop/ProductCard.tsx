@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 
 function stockBadge(p: Product) {
   if (p.stock === 0)
-    return { text: "Out of stock", cls: "bg-neutral-200 text-neutral-500" };
+    return { text: "Out of stock", cls: "bg-white/10 text-white/50" };
   if (p.stock <= 6)
-    return { text: `Only ${p.stock} left`, cls: "bg-orange-100 text-orange-600" };
+    return { text: `Only ${p.stock} left`, cls: "bg-orange-400/15 text-orange-300" };
   return null;
 }
 
@@ -60,7 +60,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           className={cn("h-full rounded-[22px]", !canAddMore && "opacity-60")}
         >
         <div className="clay-card flex h-full flex-col overflow-hidden !rounded-[22px]">
-          <div className="relative aspect-square w-full overflow-hidden rounded-t-[19px] bg-neutral-50">
+          <div className="relative aspect-square w-full overflow-hidden rounded-t-[22px] bg-white/5">
             <img
               src={product.image}
               alt={product.name}
@@ -68,47 +68,47 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             />
             {discount >= 15 && canAddMore && (
-              <span className="absolute left-2.5 top-2.5 rounded-lg bg-green-600 px-2 py-0.5 text-[10px] font-extrabold text-white shadow-[0_6px_14px_-4px_rgba(22,163,74,0.6)]">
+              <span className="absolute left-2.5 top-2.5 rounded-lg bg-rose-500 px-2 py-0.5 text-[10px] font-extrabold text-white shadow-[0_6px_14px_-4px_rgba(244,63,94,0.6)]">
                 {discount}% OFF
               </span>
             )}
             {badge && (
               <span className={cn(
-                "absolute right-2.5 top-2.5 rounded-lg px-2 py-0.5 text-[10px] font-bold",
+                "absolute right-2.5 top-2.5 rounded-lg px-2 py-0.5 text-[10px] font-bold backdrop-blur-sm",
                 badge.cls
               )}>
                 {badge.text}
               </span>
             )}
-            <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-semibold text-green-700 backdrop-blur-sm">
+            <span className="absolute bottom-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-sky-300 backdrop-blur-sm">
               <Lightning size={10} weight="fill" /> {product.eta} min
             </span>
           </div>
 
           <div className="flex flex-1 flex-col gap-1.5 p-3">
-            <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-neutral-800">
+            <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-white/90">
               {product.name}
             </h3>
-            <p className="text-xs text-neutral-400">{product.qty ?? "1 pc"}</p>
+            <p className="text-xs text-white/40">{product.qty ?? "1 pc"}</p>
 
             <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
               <div className="leading-tight">
-                <p className="text-sm font-extrabold text-neutral-900">₹{product.price}</p>
+                <p className="text-sm font-extrabold tabular-nums text-emerald-300">₹{product.price}</p>
                 {product.mrp && (
-                  <p className="text-xs text-neutral-400 line-through">₹{product.mrp}</p>
+                  <p className="text-xs text-white/35 line-through">₹{product.mrp}</p>
                 )}
               </div>
 
               {!canAddMore ? (
-                <span className="rounded-xl border-2 border-neutral-100 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-neutral-300">
+                <span className="rounded-xl border border-white/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-white/30">
                   Gone
                 </span>
               ) : inCart ? (
-                <div className="flex items-center gap-1 rounded-xl bg-green-600 px-1 py-1 text-white shadow-[0_6px_14px_-6px_rgba(22,163,74,0.7)]">
+                <div className="flex items-center gap-1 rounded-xl bg-emerald-600 px-1 py-1 text-white shadow-[0_8px_18px_-8px_rgba(16,185,129,0.8)]">
                   <button
                     onClick={() => updateQty(product.id, inCart.quantity - 1)}
                     aria-label="Decrease quantity"
-                    className="grid h-6 w-6 cursor-pointer place-items-center rounded-lg transition-colors hover:bg-green-700 active:scale-90"
+                    className="grid h-6 w-6 cursor-pointer place-items-center rounded-lg transition-colors hover:bg-emerald-700 active:scale-90"
                   >
                     <Minus size={12} weight="bold" />
                   </button>
@@ -119,7 +119,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
                     onClick={() => updateQty(product.id, inCart.quantity + 1)}
                     disabled={inCart.quantity >= product.stock}
                     aria-label="Increase quantity"
-                    className="grid h-6 w-6 cursor-pointer place-items-center rounded-lg transition-colors hover:bg-green-700 active:scale-90 disabled:opacity-40"
+                    className="grid h-6 w-6 cursor-pointer place-items-center rounded-lg transition-colors hover:bg-emerald-700 active:scale-90 disabled:opacity-40"
                   >
                     <Plus size={12} weight="bold" />
                   </button>
@@ -128,7 +128,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
                 <button
                   onClick={handleAdd}
                   aria-label={`Add ${product.name}`}
-                  className="cursor-pointer rounded-xl border-2 border-green-600 bg-green-50 px-4 py-1.5 text-xs font-extrabold uppercase tracking-wide text-green-700 transition-all hover:bg-green-600 hover:text-white active:scale-95"
+                  className="cursor-pointer rounded-full btn-ember px-4 py-1.5 text-xs font-extrabold uppercase tracking-wide transition-[background-color,border-color,color,box-shadow,transform] active:scale-95"
                 >
                   <span className="inline-flex items-center gap-1">
                     <Plus weight="bold" size={13} /> Add

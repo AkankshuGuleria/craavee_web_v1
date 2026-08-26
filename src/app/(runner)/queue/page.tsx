@@ -13,21 +13,21 @@ const jobs = [
 
 export default function RunnerQueuePage() {
   return (
-    <main className="min-h-[100dvh]  pb-24">
+    <main className="min-h-[100dvh] pb-24">
       <header className="glass-bar sticky top-0 z-50">
         <div className="mx-auto flex max-w-md items-center justify-between px-5 py-3.5">
           <button
             aria-label="Profile"
-            className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border-2 border-white bg-white text-neutral-700 shadow-[3px_4px_12px_-4px_rgba(21,94,54,0.18)] active:scale-95"
+            className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border border-white/15 bg-white/[0.08] text-white/85 active:scale-95"
           >
             <User size={18} weight="bold" />
           </button>
-          <h1 className="font-display text-lg font-extrabold tracking-tight text-neutral-900">
+          <h1 className="font-display text-lg font-extrabold tracking-tight text-white">
             Runner queue
           </h1>
           <button
             aria-label="Notifications"
-            className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border-2 border-white bg-white text-neutral-700 shadow-[3px_4px_12px_-4px_rgba(21,94,54,0.18)] active:scale-95"
+            className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border border-white/15 bg-white/[0.08] text-white/85 active:scale-95"
           >
             <Bell size={18} weight="bold" />
           </button>
@@ -37,18 +37,18 @@ export default function RunnerQueuePage() {
       <div className="mx-auto flex max-w-md flex-col gap-3 px-5 pt-6">
         <div className="mb-2 flex items-end justify-between">
           <div>
-            <h2 className="font-display text-2xl font-extrabold tracking-tight text-neutral-900">
+            <h2 className="font-display text-2xl font-extrabold tracking-tight text-white">
               Available jobs
             </h2>
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs font-bold text-green-700">
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs font-bold text-emerald-300">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-600" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
               You're online
             </p>
           </div>
-          <span className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-extrabold text-white">
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/70">
             {jobs.length} pending
           </span>
         </div>
@@ -66,14 +66,14 @@ export default function RunnerQueuePage() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <MapPin size={15} weight="fill" className="shrink-0 text-green-600" />
-                  <span className="truncate font-display text-base font-extrabold text-neutral-900">
+                  <MapPin size={15} weight="fill" className="shrink-0 text-orange-400" />
+                  <span className="truncate font-display text-base font-extrabold text-white">
                     {job.location}
                   </span>
                 </div>
                 <div
                   className={`flex items-center gap-1.5 text-xs font-semibold ${
-                    job.urgent ? "text-orange-600" : "text-neutral-400"
+                    job.urgent ? "text-orange-300" : "text-white/40"
                   }`}
                 >
                   <Clock size={13} weight="bold" />
@@ -87,7 +87,7 @@ export default function RunnerQueuePage() {
                 Claim
               </Link>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 border-t-2 border-dashed border-neutral-100 pt-2.5 text-[11px] font-semibold text-neutral-500">
+            <div className="mt-3 flex items-center gap-1.5 border-t border-dashed border-white/10 pt-2.5 text-[11px] font-semibold text-white/50">
               <Package size={12} weight="bold" /> {job.items} item
               {job.items > 1 ? "s" : ""} to pick up
             </div>

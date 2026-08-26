@@ -100,7 +100,7 @@ export function AddressSheet({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[90] flex items-end justify-center bg-neutral-900/40 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
           onClick={onClose}
         >
           <motion.div
@@ -109,31 +109,31 @@ export function AddressSheet({
             exit={reduce ? undefined : { y: 40, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-t-[28px] border-2 border-white bg-white p-6 shadow-[0_30px_60px_-20px_rgba(21,94,54,0.35)] sm:rounded-[28px]"
+            className="glass-surface w-full max-w-md rounded-t-[28px] p-6 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.9)] sm:rounded-[28px]"
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-display text-lg font-extrabold tracking-tight text-neutral-900">
+              <h2 className="font-display text-lg font-extrabold tracking-tight text-white">
                 Where should it land?
               </h2>
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-neutral-100 text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-800"
+                className="grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-white/[0.08] text-white/55 transition-colors hover:bg-white/15 hover:text-white"
               >
                 <X size={15} weight="bold" />
               </button>
             </div>
 
             {address && (
-              <div className="mb-4 flex items-start gap-3 rounded-2xl bg-green-50 p-3.5">
+              <div className="mb-4 flex items-start gap-3 rounded-2xl bg-orange-400/10 p-3.5 ring-1 ring-inset ring-orange-400/20">
                 <MapPin
                   size={16}
                   weight="fill"
-                  className="mt-0.5 shrink-0 text-green-600"
+                  className="mt-0.5 shrink-0 text-orange-300"
                 />
-                <p className="text-xs leading-relaxed text-neutral-600">
-                  <span className="font-bold text-neutral-900">{address.label}</span>{" "}
-                  · {formatShort(address)}
+                <p className="text-xs leading-relaxed text-white/65">
+                  <span className="font-bold text-white">{address.label}</span> ·{" "}
+                  {formatShort(address)}
                 </p>
               </div>
             )}
@@ -151,10 +151,10 @@ export function AddressSheet({
               {locating ? "Finding you…" : "Use my current location"}
             </button>
 
-            <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-              <span className="h-0.5 flex-1 rounded-full bg-neutral-100" />
+            <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-white/35">
+              <span className="h-0.5 flex-1 rounded-full bg-white/10" />
               or enter manually
-              <span className="h-0.5 flex-1 rounded-full bg-neutral-100" />
+              <span className="h-0.5 flex-1 rounded-full bg-white/10" />
             </div>
 
             <form onSubmit={submitForm} className="space-y-3">
@@ -164,7 +164,7 @@ export function AddressSheet({
                 placeholder="House / Flat no., Street"
                 aria-label="House, flat number and street"
                 required
-                className="clay-input w-full px-4 py-3 text-sm text-neutral-800 placeholder:text-neutral-400"
+                className="clay-input w-full px-4 py-3 text-sm text-white/90 placeholder:text-white/35"
               />
               <div className="grid grid-cols-2 gap-3">
                 <input
@@ -172,7 +172,7 @@ export function AddressSheet({
                   onChange={(e) => setForm({ ...form, area: e.target.value })}
                   placeholder="Area / Locality"
                   aria-label="Area or locality"
-                  className="clay-input w-full px-4 py-3 text-sm text-neutral-800 placeholder:text-neutral-400"
+                  className="clay-input w-full px-4 py-3 text-sm text-white/90 placeholder:text-white/35"
                 />
                 <input
                   value={form.pincode}
@@ -185,7 +185,7 @@ export function AddressSheet({
                   inputMode="numeric"
                   placeholder="Pincode"
                   aria-label="Pincode"
-                  className="clay-input w-full px-4 py-3 text-sm text-neutral-800 placeholder:text-neutral-400"
+                  className="clay-input w-full px-4 py-3 text-sm text-white/90 placeholder:text-white/35"
                 />
               </div>
               <input
@@ -194,16 +194,16 @@ export function AddressSheet({
                 placeholder="City"
                 aria-label="City"
                 className={cn(
-                  "clay-input w-full px-4 py-3 text-sm text-neutral-800 placeholder:text-neutral-400"
+                  "clay-input w-full px-4 py-3 text-sm text-white/90 placeholder:text-white/35"
                 )}
               />
 
-              {error && <p className="text-xs font-medium text-red-500">{error}</p>}
+              {error && <p className="text-xs font-medium text-rose-400">{error}</p>}
 
               <button
                 type="submit"
                 disabled={!form.line.trim()}
-                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-green-600/60 bg-green-50 px-5 py-3.5 font-display text-sm font-bold text-green-700 transition-all hover:bg-green-600 hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-5 py-3.5 font-display text-sm font-bold text-emerald-300 transition-[background-color,border-color,color,box-shadow,transform] hover:bg-emerald-500 hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Check size={16} weight="bold" />
                 Save address
