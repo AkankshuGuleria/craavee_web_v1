@@ -1,0 +1,12 @@
+{
+  "name": "@craavee/types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "gen": "supabase gen types typescript --local 2>/dev/null > src/database.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}
