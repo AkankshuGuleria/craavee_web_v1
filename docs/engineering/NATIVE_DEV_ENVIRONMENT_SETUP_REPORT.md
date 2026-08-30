@@ -40,6 +40,7 @@ reorganised. AdityaNet (176 GB) and Cartograph (21 GB) were measured only.
 | --- | --- |
 | Free before setup | **74 GiB** (the user had reclaimed ~51 GiB since the prior audit) |
 | Free after Android toolchain | 59 GiB |
+| **Free after everything** | **46 GiB** |
 | iOS 26.5 simulator runtime | 8.52 GB download |
 | Target floor | 20–25 GiB |
 
@@ -59,7 +60,8 @@ close to the floor, and none was deferred for space reasons.
 | System image `android-36;google_apis;arm64-v8a` | rev 7 | 4.3 GB | `~/Library/Android/sdk` | **INSTALLED** |
 | AVD `Craavee_Pixel7_API36` | Pixel 7, API 36 | 1.6 GB | `~/.android/avd` | **INSTALLED** |
 | **Xcode** | **26.6** (17F113) | 3.6 GB | `/Applications/Xcode.app` | **INSTALLED** *(by the user, mid-task)* |
-| iOS 26.5 Simulator runtime | 23F77 arm64 | 8.52 GB | Xcode-managed | **IN PROGRESS** — see §6 |
+| iOS 26.5 Simulator runtime | 23F77 arm64 | 8.52 GB download / **7.9 GB** on disk | Xcode-managed cryptex image | **INSTALLED & VERIFIED** |
+| Simulator device `Craavee_iPhone17` | iPhone 17, iOS 26.5 | — | CoreSimulator | **BOOTED & VERIFIED** |
 
 **NOT INSTALLED, deliberately:**
 
@@ -119,27 +121,43 @@ entry transformed its way deep into React Native before failing on a
 module resolution error (§7, item 1) — not a hang, not a filesystem
 stall, and not a timeout.
 
-### iOS — PARTIALLY VERIFIED
+### iOS — VERIFIED
 
 | Check | Result |
 | --- | --- |
 | `xcodebuild -version` | **Xcode 26.6** (17F113) |
 | `xcode-select -p` | `/Applications/Xcode.app/Contents/Developer` |
-| `simctl` | **available** |
-| iOS SDK | **iOS 26.5** (`iphoneos26.5`, `iphonesimulator26.5`) |
-| iOS **simulator runtime** | **downloading at time of writing** (8.52 GB) |
-| Simulator boot | **not yet verified** — blocked on the runtime |
+| iOS SDK | iOS 26.5 (`iphoneos26.5`, `iphonesimulator26.5`) |
+| `simctl list runtimes` | **iOS 26.5 (23F77)** |
+| Runtime availability | `isAvailable: true`, no availability error, **65** supported device types |
+| Disk image | **Ready**, Signature **Verified**, 7.9 GB, exactly **one** image |
+| Mount | mounted at `/Library/Developer/CoreSimulator/Volumes/iOS_23F77` |
+| Device created | `Craavee_iPhone17` — `FF331105-FE68-4A8A-B9AE-69B97F7C5D6A` |
+| **Boot** | **Booted** — `bootstatus` finished in ~24 s |
+| `simctl list devices booted` | `Craavee_iPhone17 (Booted)` |
+| Responsiveness | `simctl spawn launchctl` responds; screenshot captured showing the iOS 26.5 home screen with SpringBoard, widgets and Dynamic Island rendering |
 
-Xcode 26 ships thin: the SDK needed to *build* is present, but the
-runtime the Simulator *boots* is a separate 8.52 GB download
-(`xcodebuild -downloadPlatform iOS`). Until it completes,
-`xcrun simctl list runtimes` is empty and no simulator can start.
+### iOS + Metro — VERIFIED to the point of the project's own defect
 
-**Note on the Xcode licence.** Immediately after Xcode appeared,
-`xcode-select` pointed at it with the licence unaccepted, which broke
-`git` and `clang` machine-wide (`rc=69`). Accepting it requires
-`sudo xcodebuild -license accept`. It was resolved during this task; if
-it recurs after an Xcode update, that is the fix.
+`npx expo start` came up in ~15 s. A request for the expo-router virtual
+entry with `platform=ios` was **served and transformed** by Metro, failing
+only on the project defect in §7.1:
+
+```
+UnableToResolveError
+  originModulePath: node_modules/expo/src/launch/withDevTools.ios.tsx   ← hoisted to the workspace root
+  targetModuleName: react-native-css-interop/jsx-runtime
+```
+
+That is the clearest statement of the defect yet: the NativeWind Babel
+preset injects its JSX runtime into a **hoisted** Expo file at the
+workspace root, which cannot see
+`apps/customer-runner/node_modules/nativewind/node_modules/react-native-css-interop`.
+Metro is working; the monorepo resolver configuration is not.
+
+`expo prebuild` / `expo run:ios` were **not** run — they generate an
+`ios/` directory and write to `app.json`, which would be a product change.
+No `ios/` directory exists.
 
 ### Web / project baseline — VERIFIED, unchanged
 
@@ -263,6 +281,57 @@ watchman watch-del-all                             # only if watchman is install
 xcrun simctl delete unavailable                    # prunes stale simulators
 ```
 
+## 11a. Two traps worth knowing
+
+### Never prune simulator runtime images that report as duplicates
+
+After the first successful 8.52 GB download, `simctl runtime list` showed
+**three** image entries — one `Ready` and two `Unusable - Other Failure:
+Duplicate of …`. Deleting the two "duplicates" destroyed the runtime
+entirely: they shared the same backing MobileAsset as the good image, and
+removing them purged it. `Total Disk Images: 0`, and the 8.52 GB had to be
+downloaded again.
+
+**Do not run `simctl runtime delete` on entries marked Duplicate or
+Unusable** without first proving they do not share an `Image Path` with a
+working image. The duplicates most likely arose because the platform
+download ran more than once. On the clean second attempt exactly one image
+was created and the runtime registered immediately — which also explains
+the earlier "image is Ready but `simctl list runtimes` is empty" symptom:
+the duplicates were the cause, not a mount failure.
+
+### The Xcode licence blocks git, not just Xcode
+
+When `xcode-select` switched to a freshly installed Xcode whose licence had
+not been accepted, **`git` and `clang` failed machine-wide** with:
+
+```
+You have not agreed to the Xcode license agreements … (rc=69)
+```
+
+Fix, which needs a password:
+
+```bash
+sudo xcodebuild -license accept
+```
+
+Worth expecting after any Xcode upgrade.
+
+### Claude Code's iOS Simulator integration needs an explicit switch
+
+The bundled simulator integration reported *"Xcode is installed but not
+selected"* even though `xcode-select -p` already returned
+`/Applications/Xcode.app/Contents/Developer` and `simctl` worked normally
+from a shell. Its fix, also requiring a password:
+
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
+Until that is run, simulator verification has to go through `xcrun simctl`
+directly — which is what was done here (`simctl io … screenshot`), not a
+generic screen-control fallback.
+
 ## 12. Physical devices
 
 Prepared, not configured. Nothing was signed and no certificate or
@@ -349,7 +418,8 @@ is required, is in `PHASE_6_LOCAL_VALIDATION_PLAN.md`.
 | | |
 | --- | --- |
 | **INSTALLED** | JDK 17, Android SDK 36 + build-tools + platform-tools + emulator + one arm64 system image, one AVD, Xcode 26.6, iOS 26.5 simulator runtime |
-| **VERIFIED** | Android emulator boots and is visible to `adb`; Metro starts and bundles; the full Craavee test/build baseline is unchanged |
+| **VERIFIED** | iOS 26.5 runtime registered, mounted and available; `Craavee_iPhone17` **boots** and renders SpringBoard; Android emulator boots to Android 16 and is visible to `adb`; Metro starts and transforms for **both** platforms; the full Craavee test/build baseline is unchanged |
 | **OPTIONAL** | Android Studio IDE, CocoaPods, Watchman — each deliberately skipped with a reason (§4) |
 | **NOT INSTALLED** | Extra iOS runtimes, extra system images, `mas`/`xcodes` |
-| **BLOCKED** | `expo run:ios` and `expo run:android`, on three pre-existing project defects (§7) that are product changes, not environment work |
+| **BLOCKED** | `expo run:ios` and `expo run:android`, on three pre-existing project defects (§7) that are product changes, not environment work. **The environment itself is complete.** |
+| **NEEDS YOUR PASSWORD** | `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` to enable Claude Code's built-in simulator integration (§11a) |
