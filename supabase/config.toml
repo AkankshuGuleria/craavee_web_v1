@@ -288,6 +288,10 @@ max_frequency = "5s"
 # seed time — no runtime promotion race.
 9000001101 = "123456"
 9000001301 = "123456"
+# Phase 6 store-fulfilment suite: its own throwaway customer, so the
+# stock-out refunds it triggers never touch the wallet of 9990000001-03,
+# which the Phase 3 auth suite asserts is exactly 0.
+9990000010 = "123456"
 # Phase 6 store-fulfilment suite: a packer scoped to the seed store and a
 # second packer scoped to a different store, so the cross-store rejection
 # is proved with a real JWT rather than a service-role fake. Seeded (not

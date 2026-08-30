@@ -31,7 +31,7 @@ const SERVICE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
-const FN_PORT = 8792; // distinct from the order/payment suites' ports
+const FN_PORT = 8793; // dev 8790, order 8791, payment 8792 - each suite owns its own
 const FN_BASE = `http://127.0.0.1:${FN_PORT}/functions/v1`;
 
 const svc: SupabaseClient = createClient(SUPABASE_URL, SERVICE_KEY, {
@@ -212,7 +212,7 @@ before(async () => {
   packerJwt = (await signIn("9000001102")).jwt;
   otherPackerJwt = (await signIn("9000001103")).jwt;
   adminJwt = (await signIn("9000001301")).jwt;
-  const cust = await signIn("9990000001");
+  const cust = await signIn("9990000010"); // dedicated: this suite credits wallets
   customerJwt = cust.jwt;
   CUSTOMER = cust.id;
 

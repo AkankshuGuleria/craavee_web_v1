@@ -126,7 +126,11 @@ insert into auth.users (id, phone, aud, role, instance_id, confirmation_token, r
   -- 5 webhook/refund wallet mutations never race the Phase 4 order suite
   -- (both can run concurrently under `node --test`).
   ('00000000-0000-4000-8000-000000001907', '9990000007', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001908', '9990000008', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
+  ('00000000-0000-4000-8000-000000001908', '9990000008', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  -- Phase 6 store-fulfilment suite's own customer. Seeded like the rest:
+  -- the local stack has no SMS provider, so signInWithOtp cannot create a
+  -- user and a test_otp phone only verifies if its auth.users row exists.
+  ('00000000-0000-4000-8000-000000001910', '9990000010', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
 
 -- A matching `auth.identities` row (provider='phone') is also required —
 -- a real signup writes one, and GoTrue's own account-linking expects it
