@@ -452,6 +452,20 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# ---- Phase 6 store fulfilment (API_CONTRACTS.md §3) ----
+# verify_jwt = false on both, same reasoning as create_order / refund:
+# the functions verify the caller themselves via _shared/context.ts so a
+# missing or expired token returns the AUTH_REQUIRED envelope rather than
+# a bare gateway 401. Authorization proper (packer role + store scope) is
+# resolved from staff_roles inside the database functions.
+[functions.mark_packed]
+enabled = true
+verify_jwt = false
+
+[functions.mark_stock_out]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

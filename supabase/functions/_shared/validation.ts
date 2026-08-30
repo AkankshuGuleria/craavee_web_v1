@@ -42,3 +42,26 @@ export const refundSchema = z.object({
   reason: z.string().min(1),
 });
 export type RefundBody = z.infer<typeof refundSchema>;
+
+// API_CONTRACTS.md §"Store-Side Reconciliation" — mark_packed. The order
+// id is the entire request: what gets packed, which lines are filled and
+// how much stock moves are all decided server-side from the order itself.
+export const markPackedSchema = z.object({
+  orderId: uuid,
+});
+export type MarkPackedBody = z.infer<typeof markPackedSchema>;
+
+// mark_stock_out. `availableQty` is a COUNT the packer observed on the
+// shelf, not a monetary figure — the refund is derived from the stored
+// order_items.unit_price inside process_stock_out and is never sent by
+// the client (Phase 6 §13/§15). `delist` is an operational hint,
+// defaulting server-side to true for a total miss. `idempotencyKey` keys
+// the refunds row for the gateway-funded share.
+export const markStockOutSchema = z.object({
+  orderId: uuid,
+  orderItemId: uuid,
+  availableQty: z.number().int().min(0),
+  delist: z.boolean().optional(),
+  idempotencyKey: uuid,
+});
+export type MarkStockOutBody = z.infer<typeof markStockOutSchema>;
