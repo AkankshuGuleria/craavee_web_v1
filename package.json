@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Craavee — hyperlocal quick-commerce for university campuses. Monorepo root (DEPLOYMENT_TOPOLOGY.md §1).",
+  "description": "Craavee \u2014 hyperlocal quick-commerce for university campuses. Monorepo root (DEPLOYMENT_TOPOLOGY.md \u00a71).",
   "workspaces": [
     "apps/customer-runner",
     "apps/store",
@@ -41,6 +41,8 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native-css-interop": {
       "tailwindcss": "^3.4.19"
     },
