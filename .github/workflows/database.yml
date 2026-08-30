@@ -23,8 +23,12 @@ on:
       - "apps/customer-runner/__tests__/**"
       - "packages/**"
       - ".github/workflows/database.yml"
+  # No `branches:` filter: this must run on every pull request, whatever its
+  # base — the review stack is stacked PRs based on each other's branches,
+  # not on main. The `paths` filter below is kept: this job provisions a full
+  # Postgres/Supabase Docker stack, so it stays scoped to changes that can
+  # actually affect database correctness.
   pull_request:
-    branches: [main]
     paths:
       - "supabase/**"
       - "scripts/**"
