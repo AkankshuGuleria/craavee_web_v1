@@ -1,0 +1,8 @@
+/* Console app stylesheet — re-exports the shared @craavee/ui design
+   system (tokens + component-layer utility classes: clay-card, glass-bar,
+   btn-clay, etc.) verbatim, per the Phase 2B instruction to preserve the
+   existing design system rather than rework it. @source tells Tailwind
+   v4's content scanner to also look inside the workspace package (it
+   won't, by default, scan node_modules-linked packages). */
+@import "@craavee/ui/styles.css";
+@source "../../../../packages/ui/src";

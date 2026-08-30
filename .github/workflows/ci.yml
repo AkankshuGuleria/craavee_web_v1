@@ -1,0 +1,43 @@
+name: CI
+
+# Application/tooling gate: workspace install, type-checking, linting, unit
+# tests, and the two Next.js app builds. Database correctness (migrations,
+# RLS, pgTAP) is a separate workflow (database.yml) — kept apart so a
+# database-only change doesn't have to wait on (or fail because of) the app
+# build chain, and vice versa.
+
+on:
+  push:
+    branches: [main]
+  # No `branches:` filter: this must run on every pull request, whatever its
+  # base. The Craavee review stack is a series of stacked PRs whose bases are
+  # each other's branches rather than main, and a `branches: [main]` filter
+  # silently skipped all of them — GitHub reported "no checks" rather than a
+  # failure, so the gap was invisible until it was looked for.
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (all workspaces)
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests (all workspaces)
+        run: npm run test
+
+      - name: Build Store + Console
+        run: npm run build
