@@ -60,8 +60,10 @@ jobs:
       - name: Reset database (apply migrations + seed)
         run: supabase db reset
 
+      # --local is required: without it the CLI looks for a linked remote
+      # project and exits 1 with "Cannot find project ref".
       - name: List applied migrations (visibility)
-        run: supabase migration list
+        run: supabase migration list --local
 
       # Invoked via `bash` rather than `./scripts/run-db-tests.sh`: this repo
       # lives on an exFAT volume during development, which does not
