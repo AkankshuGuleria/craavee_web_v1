@@ -135,7 +135,8 @@ stall, and not a timeout.
 | Device created | `Craavee_iPhone17` — `FF331105-FE68-4A8A-B9AE-69B97F7C5D6A` |
 | **Boot** | **Booted** — `bootstatus` finished in ~24 s |
 | `simctl list devices booted` | `Craavee_iPhone17 (Booted)` |
-| Responsiveness | `simctl spawn launchctl` responds; screenshot captured showing the iOS 26.5 home screen with SpringBoard, widgets and Dynamic Island rendering |
+| Responsiveness | `simctl spawn launchctl` responds; screenshot shows the iOS 26.5 home screen with SpringBoard, widgets and Dynamic Island rendering |
+| Claude Code simulator integration | **attaches and drives the device** (402×874 pt coordinate space), after the `xcode-select` switch in §11a |
 
 ### iOS + Metro — VERIFIED to the point of the project's own defect
 
@@ -317,20 +318,24 @@ sudo xcodebuild -license accept
 
 Worth expecting after any Xcode upgrade.
 
-### Claude Code's iOS Simulator integration needs an explicit switch
+### Claude Code's iOS Simulator integration needs its own explicit switch — RESOLVED
 
 The bundled simulator integration reported *"Xcode is installed but not
 selected"* even though `xcode-select -p` already returned
 `/Applications/Xcode.app/Contents/Developer` and `simctl` worked normally
-from a shell. Its fix, also requiring a password:
+from a shell. It keeps its own resolution and needed the switch to be set
+explicitly:
 
 ```bash
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 ```
 
-Until that is run, simulator verification has to go through `xcrun simctl`
-directly — which is what was done here (`simctl io … screenshot`), not a
-generic screen-control fallback.
+Run by the machine owner on 2026-08-31. **Verified working afterwards**:
+the integration attaches to `Craavee_iPhone17` (coordinate space
+402×874 pt) and returns live screenshots, so simulator work no longer has
+to go through `xcrun simctl` by hand.
+
+If it recurs after an Xcode upgrade, this is the fix.
 
 ## 12. Physical devices
 
@@ -421,5 +426,4 @@ is required, is in `PHASE_6_LOCAL_VALIDATION_PLAN.md`.
 | **VERIFIED** | iOS 26.5 runtime registered, mounted and available; `Craavee_iPhone17` **boots** and renders SpringBoard; Android emulator boots to Android 16 and is visible to `adb`; Metro starts and transforms for **both** platforms; the full Craavee test/build baseline is unchanged |
 | **OPTIONAL** | Android Studio IDE, CocoaPods, Watchman — each deliberately skipped with a reason (§4) |
 | **NOT INSTALLED** | Extra iOS runtimes, extra system images, `mas`/`xcodes` |
-| **BLOCKED** | `expo run:ios` and `expo run:android`, on three pre-existing project defects (§7) that are product changes, not environment work. **The environment itself is complete.** |
-| **NEEDS YOUR PASSWORD** | `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` to enable Claude Code's built-in simulator integration (§11a) |
+| **BLOCKED** | `expo run:ios` and `expo run:android`, on three pre-existing project defects (§7) that are product changes, not environment work. **The environment itself is complete — nothing further is needed from the machine.** |
