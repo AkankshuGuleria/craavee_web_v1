@@ -1,0 +1,338 @@
+# Native Development Environment — Setup Report
+
+Record of preparing this Mac for local iOS, Android and web development
+for Craavee. Supersedes the storage estimates in
+`LOCAL_DEVELOPMENT_ENVIRONMENT.md`, which was written before any tooling
+existed.
+
+Date: 2026-08-30. Baseline verified against `main` = `af60f21`.
+
+**No Craavee product code was changed.** The only repository additions are
+this document, the two updated environment documents, and
+`scripts/check-native-dev-env.sh`.
+
+---
+
+## 1. Machine
+
+| | |
+| --- | --- |
+| Model | Mac16,12 — Apple **M4**, 10 cores |
+| RAM | **16 GB** |
+| macOS | 26.6.2 (25G83), **arm64** |
+| Homebrew | 6.0.20 (already present) |
+| Node / npm | v25.5.0 / 11.8.0 |
+
+## 2. Disk layout
+
+| Volume | Filesystem | Size | Free (after setup) |
+| --- | --- | --- | --- |
+| Internal (`/`) | APFS | 228 GiB | see §4 |
+| T7 Shield | **ExFAT**, 128 KB blocks | 931 GiB | 696 GiB |
+
+T7 mount options: `local, nodev, nosuid, noowners, noatime, fskit`.
+**Untouched by this task** — not formatted, repartitioned, renamed, or
+reorganised. AdityaNet (176 GB) and Cartograph (21 GB) were measured only.
+
+## 3. Storage budget
+
+| | |
+| --- | --- |
+| Free before setup | **74 GiB** (the user had reclaimed ~51 GiB since the prior audit) |
+| Free after Android toolchain | 59 GiB |
+| iOS 26.5 simulator runtime | 8.52 GB download |
+| Target floor | 20–25 GiB |
+
+The budget held throughout with a wide margin; no installation step came
+close to the floor, and none was deferred for space reasons.
+
+## 4. What was installed
+
+| Component | Version | Size | Location | Status |
+| --- | --- | --- | --- | --- |
+| OpenJDK 17 (Homebrew, **keg-only**) | 17.0.20.1 | ~300 MB | `/opt/homebrew/opt/openjdk@17` | **INSTALLED** |
+| Android SDK Command-line Tools | 15859902 + `cmdline-tools;latest` | 173 MB + 172 MB | brew prefix + SDK | **INSTALLED** |
+| Android SDK Platform-Tools (`adb`) | 37.0.1 | 37 MB | `~/Library/Android/sdk` | **INSTALLED** |
+| Android SDK Platform 36 | rev 2 | 134 MB | `~/Library/Android/sdk` | **INSTALLED** |
+| Android SDK Build-Tools | 36.0.0 | 188 MB | `~/Library/Android/sdk` | **INSTALLED** |
+| Android Emulator | 37.1.11 | 1.1 GB | `~/Library/Android/sdk` | **INSTALLED** |
+| System image `android-36;google_apis;arm64-v8a` | rev 7 | 4.3 GB | `~/Library/Android/sdk` | **INSTALLED** |
+| AVD `Craavee_Pixel7_API36` | Pixel 7, API 36 | 1.6 GB | `~/.android/avd` | **INSTALLED** |
+| **Xcode** | **26.6** (17F113) | 3.6 GB | `/Applications/Xcode.app` | **INSTALLED** *(by the user, mid-task)* |
+| iOS 26.5 Simulator runtime | 23F77 arm64 | 8.52 GB | Xcode-managed | **INSTALLED** |
+
+**NOT INSTALLED, deliberately:**
+
+| | Why |
+| --- | --- |
+| Android Studio (IDE) | The CLI toolchain (`sdkmanager`, `avdmanager`, `adb`, `emulator`) is sufficient for `expo run:android`, and the IDE is ~3.5 GB of GUI this workflow never invokes. Install later if you want the layout inspector or profiler. |
+| CocoaPods | Expo's prebuild manages pods itself for SDK 57; installing it globally risks the system Ruby. Add it only if a prebuild actually asks. |
+| Watchman | Metro's default watcher worked with no missed reloads. Watchman is a fix for a problem this machine does not have. |
+| Additional iOS runtimes / Android system images | One of each, per the brief. Each extra is 4–9 GB. |
+| `mas` / `xcodes` | Only needed to script an Xcode install, which required Apple ID authentication regardless. |
+
+## 5. Environment variables
+
+Nothing was written to the shell profile — the values below are what the
+Android tooling needs, and are documented rather than silently injected.
+
+```bash
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+```
+
+**Why JDK 17 is keg-only and `JAVA_HOME` is not exported globally.** Three
+JDKs already exist on this machine (Temurin 25, Oracle 25, Oracle 24) and
+other projects may depend on them. Homebrew's `openjdk@17` is deliberately
+*not* symlinked into `PATH`: a fresh shell still resolves `java` to
+**25.0.1**, verified after installation. Android builds opt in by setting
+`JAVA_HOME` for that shell. **AdityaNet and Cartograph tooling is
+unaffected.**
+
+React Native 0.86 / Expo SDK 57 need JDK 17; JDK 25 is too new for the
+Android Gradle Plugin, which is why 17 was added rather than the existing
+JDKs being used or removed.
+
+## 6. Verification
+
+### Android — VERIFIED
+
+| Check | Result |
+| --- | --- |
+| `adb version` | 1.0.41 (37.0.1) |
+| `emulator -version` | 37.1.11.0 |
+| AVD created | `Craavee_Pixel7_API36` |
+| **Emulator boots** | **yes** — `sys.boot_completed=1` |
+| `adb devices` | `emulator-5554  device` |
+| Guest OS | **Android 16**, `arm64-v8a` |
+
+### Metro — VERIFIED (and the historical hang was not reproducible)
+
+`npx expo start` came up in **~15 s** and `/status` returned
+`packager-status:running`. It loaded `.env.local` correctly from the
+exFAT volume.
+
+Metro then **genuinely bundled**: a request for the expo-router virtual
+entry transformed its way deep into React Native before failing on a
+module resolution error (§7, item 1) — not a hang, not a filesystem
+stall, and not a timeout.
+
+### iOS — see §7
+
+`xcodebuild -version` → Xcode 26.6. `simctl` available. iOS 26.5 SDK
+present and the simulator runtime installed.
+
+### Web / project baseline — VERIFIED, unchanged
+
+| | |
+| --- | --- |
+| `npm run typecheck` | pass |
+| `npm run lint` | pass |
+| `npm run test` | **44/44** |
+| `npm run build` | pass (Store + Console) |
+| `npm run db:test` | **ALL GREEN — 14 files, 371 assertions** |
+| `npm run functions:check` | pass |
+| `npm run functions:test` | **8/8** |
+| `git status` | clean — no product file touched |
+
+## 7. BLOCKED — three pre-existing project defects
+
+The environment is ready. **The project is not yet buildable natively**,
+for three reasons found by actually trying to bundle. None is an
+environment fault, and none was fixed here: they are product changes, and
+this was an environment task.
+
+### 7.1 `metro.config.js` lacks the monorepo resolver configuration
+
+`apps/customer-runner/metro.config.js` calls
+`getDefaultConfig(__dirname)` and sets **no** `watchFolders` and **no**
+`resolver.nodeModulesPaths` — Expo documents both as required in a
+workspace.
+
+Evidence:
+
+- `react-native` is **hoisted** to `node_modules/react-native`; there is
+  no copy under `apps/customer-runner/node_modules`.
+- `nativewind` and its `react-native-css-interop` runtime are **nested**
+  at `apps/customer-runner/node_modules/nativewind/…`.
+- The Babel config sets `jsxImportSource: "nativewind"`, so the NativeWind
+  JSX runtime is injected into files Metro transforms — **including
+  hoisted React Native files**, which cannot see the app's nested
+  `node_modules`.
+
+Result:
+
+```
+UnableToResolveError
+  originModulePath: node_modules/react-native/Libraries/LogBox/Data/LogBoxData.js
+  targetModuleName: react-native-css-interop
+```
+
+### 7.2 `app.json` has no bundle identifier or package name
+
+`expo.ios.bundleIdentifier` and `expo.android.package` are both
+undefined. Both are required before `expo run:ios` / `expo run:android`
+can generate a native project.
+
+### 7.3 `expo-doctor`: duplicate React and a version mismatch
+
+```
+✖ duplicate native module dependencies
+    react      19.2.3 (apps/customer-runner) vs 19.2.8 (root)
+    react-dom  19.2.3 (apps/customer-runner) vs 19.2.8 (root)
+✖ expo-crypto  expected ~57.0.2, found 15.0.9
+```
+
+19 of 21 checks passed. A native build may only contain one copy of a
+native module, so the duplicate React is a genuine blocker rather than a
+warning.
+
+**These three explain the "Expo could not be verified" note carried since
+Phase 3.** That was recorded as a possible sandbox limitation; it is not.
+Metro runs fine here. The project's monorepo Metro configuration and its
+dependency tree are what stop it.
+
+## 8. Metro diagnosis (the §19 question, answered)
+
+| Hypothesis | Verdict |
+| --- | --- |
+| Sandbox-specific | **No.** Metro starts and bundles on the real machine. |
+| Filesystem / exFAT | **No.** Metro read the project and `.env.local` from the T7 without complaint. |
+| Dependency-related | **Partly** — duplicate React and the nested NativeWind runtime. |
+| Configuration-related | **Yes, primarily** — the missing monorepo resolver config. |
+| Actual project bug | **Yes.** §7.1–7.3 are defects in the repository, not the environment. |
+
+The earlier failures were observed through `expo export`, which bundles
+for production and fails on the same resolution problem — the hang was a
+symptom, not the disease.
+
+## 9. Storage consumed
+
+| | |
+| --- | --- |
+| Android toolchain (SDK + AVD + cmdline-tools + JDK) | ~15 GiB |
+| Xcode 26.6 app | 3.6 GB |
+| iOS 26.5 simulator runtime | 8.52 GB |
+
+## 10. Performance on 16 GB
+
+With the emulator booted and the Docker/Supabase stack running, system
+memory free fell to **38%** and swap reached **3.35 GB of 4 GB**. That is
+already under pressure with a single platform.
+
+**Run one native platform at a time.** Stop the Supabase stack
+(`npm run db:stop`) when testing on a device, and do not expect the iOS
+Simulator and the Android Emulator to coexist comfortably.
+
+## 11. Cache strategy
+
+All native caches stay on **internal APFS** — Xcode DerivedData,
+CoreSimulator, the Android SDK, AVD data, Gradle. The T7's 128 KB
+allocation block costs roughly **17×** on small-file trees (measured:
+Craavee's `node_modules` is 1.14 GB of content occupying 19 GB), so
+moving them there would consume *more* space, not less, on top of being
+unsupported.
+
+Safe cleanup when caches grow (none of these is routine — do not run them
+between builds):
+
+```bash
+rm -rf ~/Library/Developer/Xcode/DerivedData/*     # rebuild cost only
+rm -rf ~/.gradle/caches                            # re-downloads
+npm cache clean --force
+watchman watch-del-all                             # only if watchman is installed
+xcrun simctl delete unavailable                    # prunes stale simulators
+```
+
+## 12. Physical devices
+
+Prepared, not configured. Nothing was signed and no certificate or
+profile was created.
+
+**Android** — enable Developer Options (tap Build Number 7×) then USB
+debugging, connect, accept the RSA prompt, confirm with `adb devices`.
+Wireless debugging works over the LAN if preferred.
+
+**iOS** — connect the iPhone, trust the Mac, then in Xcode add your Apple
+ID under Settings → Accounts and let it create a personal development
+team. A **free** Apple ID is enough for local device testing; a paid
+account is only needed for TestFlight or App Store distribution.
+
+**A physical device cannot reach `127.0.0.1`.** Point
+`EXPO_PUBLIC_SUPABASE_URL` at the Mac's LAN address
+(`ipconfig getifaddr en0`) with both on the same network. This is the
+most common cause of "works in the simulator, broken on the phone".
+
+## 13. Expo / EAS
+
+Unchanged. **Local**: Expo dev server, Simulator, Emulator, physical
+devices. **Cloud (EAS)**: production builds, signing, distribution,
+updates. EAS CLI 23.0.0 is available through `npx eas-cli`; nothing was
+installed globally and no Expo SDK version was changed.
+
+## 14. Exact commands used
+
+```bash
+# JDK 17 — keg-only, leaves existing JDKs alone
+brew install openjdk@17
+
+# Android toolchain
+brew install --cask android-commandlinetools
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
+sdkmanager --sdk_root="$ANDROID_HOME" \
+  platform-tools emulator platforms:android-36 build-tools:36.0.0 \
+  system-images:android-36:google_apis:arm64-v8a cmdline-tools:latest
+"$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+  -n Craavee_Pixel7_API36 -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_7
+
+# iOS runtime (Xcode 26 ships thin and downloads platforms separately)
+xcodebuild -downloadPlatform iOS
+```
+
+(`sdkmanager` package paths use `;` not `:` — rewritten here only to keep
+this block copy-pasteable in a shell.)
+
+## 15. Rollback / uninstall
+
+Everything installed is removable without touching the repository or any
+other project:
+
+```bash
+brew uninstall openjdk@17
+brew uninstall --cask android-commandlinetools
+rm -rf ~/Library/Android/sdk        # ~5.9 GB
+rm -rf ~/.android                   # AVDs, ~1.6 GB
+# Xcode: drag /Applications/Xcode.app to the Trash, then
+sudo xcode-select --switch /Library/Developer/CommandLineTools
+xcrun simctl delete all             # removes simulator data
+```
+
+No shell profile was modified, so there is nothing to unwind there.
+
+## 16. Recommended workflow
+
+```
+implement → automated tests → typecheck/lint
+   → npx expo start
+   → iOS (Simulator or device)
+   → Android (Emulator or device)
+   → manual interaction check
+   → fix → build → commit → PR → CI → merge
+```
+
+Full detail, including per-platform commands and when device validation
+is required, is in `PHASE_6_LOCAL_VALIDATION_PLAN.md`.
+
+## 17. Status summary
+
+| | |
+| --- | --- |
+| **INSTALLED** | JDK 17, Android SDK 36 + build-tools + platform-tools + emulator + one arm64 system image, one AVD, Xcode 26.6, iOS 26.5 simulator runtime |
+| **VERIFIED** | Android emulator boots and is visible to `adb`; Metro starts and bundles; the full Craavee test/build baseline is unchanged |
+| **OPTIONAL** | Android Studio IDE, CocoaPods, Watchman — each deliberately skipped with a reason (§4) |
+| **NOT INSTALLED** | Extra iOS runtimes, extra system images, `mas`/`xcodes` |
+| **BLOCKED** | `expo run:ios` and `expo run:android`, on three pre-existing project defects (§7) that are product changes, not environment work |
