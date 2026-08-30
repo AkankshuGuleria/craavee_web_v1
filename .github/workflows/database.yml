@@ -50,9 +50,24 @@ jobs:
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
+      # Pinned, not `latest`. The pgTAP suite asserts GRANT-level denial
+      # (a hard 42501) for tables that anon/authenticated must not touch at
+      # all. Whether that holds depends on which role the CLI creates tables
+      # as: Postgres applies the default ACL of the creating role, and the
+      # Supabase image ships a restrictive default for `postgres`
+      # (anon/authenticated = Dxtm, no DML) alongside a permissive one for
+      # `supabase_admin` (arwdDxtm). On `latest`, 7 assertions across
+      # 05/06 flipped from "denied 42501" to "no exception" - the grants were
+      # present, so denial fell back to RLS returning 0 rows instead.
+      #
+      # RLS still protected the data in every one of those cases; what was
+      # lost is the defence-in-depth layer RBAC_MATRIX.md §4/§5 claims. The
+      # real fix is explicit REVOKEs in a migration, which is out of scope
+      # for a CI change - see docs/engineering/CI_CHECKPOINT_REPORT.md §8.
+      # Unpin once that lands.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.113.0
 
       - uses: denoland/setup-deno@v2
         with:
