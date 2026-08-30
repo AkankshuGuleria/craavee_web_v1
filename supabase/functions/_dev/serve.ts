@@ -16,11 +16,15 @@
 import { handleCreateOrder } from "../create_order/handler.ts";
 import { handleValidatePromo } from "../validate_promo/handler.ts";
 import { handleExpireStaleReservations } from "../expire_stale_reservations/handler.ts";
+import { handlePaymentWebhook } from "../payment_webhook/handler.ts";
+import { handleRefund } from "../refund/handler.ts";
 
 const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   create_order: handleCreateOrder,
   validate_promo: handleValidatePromo,
   expire_stale_reservations: handleExpireStaleReservations,
+  payment_webhook: handlePaymentWebhook,
+  refund: handleRefund,
 };
 
 const PORT = Number(Deno.env.get("FUNCTIONS_PORT") ?? "8790");
