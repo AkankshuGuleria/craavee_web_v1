@@ -1,0 +1,109 @@
+name: Database
+
+# Schema/RLS/trigger correctness gate: starts the local Supabase stack,
+# applies every migration plus the dev seed exactly as `supabase db reset`
+# would locally, then runs the full pgTAP suite via the project's own
+# runner (scripts/run-db-tests.sh — NOT `supabase test db`/pg_prove; see
+# that script's header for why), then runs the customer-runner
+# integration suites against that same live stack — real network calls,
+# never a mocked client. Kept separate from ci.yml so app-only changes
+# don't need Postgres and schema-only changes don't need to build the
+# Next.js apps.
+#
+# Edge Function type-checking and the function-backed integration suites
+# are added to this workflow by the PR that introduces
+# supabase/functions/.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "scripts/**"
+      - "apps/customer-runner/__tests__/**"
+      - "packages/**"
+      - ".github/workflows/database.yml"
+  # No `branches:` filter: this must run on every pull request, whatever its
+  # base — the review stack is stacked PRs based on each other's branches,
+  # not on main. The `paths` filter below is kept: this job provisions a full
+  # Postgres/Supabase Docker stack, so it stays scoped to changes that can
+  # actually affect database correctness.
+  pull_request:
+    paths:
+      - "supabase/**"
+      - "scripts/**"
+      - "apps/customer-runner/__tests__/**"
+      - "packages/**"
+      - ".github/workflows/database.yml"
+
+jobs:
+  db-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      # Pinned, not `latest`. The pgTAP suite asserts GRANT-level denial
+      # (a hard 42501) for tables that anon/authenticated must not touch at
+      # all. Whether that holds depends on which role the CLI creates tables
+      # as: Postgres applies the default ACL of the creating role, and the
+      # Supabase image ships a restrictive default for `postgres`
+      # (anon/authenticated = Dxtm, no DML) alongside a permissive one for
+      # `supabase_admin` (arwdDxtm). On `latest`, 7 assertions across
+      # 05/06 flipped from "denied 42501" to "no exception" - the grants were
+      # present, so denial fell back to RLS returning 0 rows instead.
+      #
+      # RLS still protected the data in every one of those cases; what was
+      # lost is the defence-in-depth layer RBAC_MATRIX.md §4/§5 claims. The
+      # real fix is explicit REVOKEs in a migration, which is out of scope
+      # for a CI change - see docs/engineering/CI_CHECKPOINT_REPORT.md §8.
+      # Unpin once that lands.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.113.0
+
+      - name: Start local Supabase stack
+        run: supabase start
+
+      - name: Reset database (apply migrations + seed)
+        run: supabase db reset
+
+      # --local is required: without it the CLI looks for a linked remote
+      # project and exits 1 with "Cannot find project ref".
+      - name: List applied migrations (visibility)
+        run: supabase migration list --local
+
+      # Invoked via `bash` rather than `./scripts/run-db-tests.sh`: this repo
+      # lives on an exFAT volume during development, which does not
+      # reliably preserve the executable bit through `git add` (verified —
+      # git recorded mode 100644, not 100755, for this file). Calling it
+      # through `bash` makes the workflow correct regardless of whatever
+      # mode ends up committed.
+      - name: Run pgTAP suite
+        run: bash scripts/run-db-tests.sh
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run customer-runner integration suites
+        working-directory: apps/customer-runner
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export EXPO_PUBLIC_SUPABASE_URL="$API_URL"
+          export EXPO_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export CRAAVEE_ALLOW_MOCK_CONTROL=1
+          npm run test:integration
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop
