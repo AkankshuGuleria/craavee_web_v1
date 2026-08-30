@@ -9,8 +9,12 @@ name: CI
 on:
   push:
     branches: [main]
+  # No `branches:` filter: this must run on every pull request, whatever its
+  # base. The Craavee review stack is a series of stacked PRs whose bases are
+  # each other's branches rather than main, and a `branches: [main]` filter
+  # silently skipped all of them — GitHub reported "no checks" rather than a
+  # failure, so the gap was invisible until it was looked for.
   pull_request:
-    branches: [main]
 
 jobs:
   build-and-test:
