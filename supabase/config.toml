@@ -421,6 +421,24 @@ deno_version = 2
 [edge_runtime.secrets]
 CRAAVEE_ALLOW_MOCK_CONTROL = "1"
 
+# ---- Edge Functions (Phase 4, API_CONTRACTS.md §3) ----
+# verify_jwt = false on all three: create_order / validate_promo verify
+# the caller themselves (via _shared/context.ts) so a missing/expired
+# token returns the AUTH_REQUIRED envelope from §2 rather than a bare
+# gateway 401; expire_stale_reservations is a system job with no user
+# caller at all.
+[functions.create_order]
+enabled = true
+verify_jwt = false
+
+[functions.validate_promo]
+enabled = true
+verify_jwt = false
+
+[functions.expire_stale_reservations]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
