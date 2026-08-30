@@ -439,6 +439,19 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# ---- Phase 5 (API_CONTRACTS.md §3) ----
+# payment_webhook: authenticated by gateway signature verification against
+# the RAW body (D12), NOT a Craavee JWT — verify_jwt MUST be false.
+# refund: verifies the caller itself (admin role) via _shared/context.ts,
+# same reasoning as create_order.
+[functions.payment_webhook]
+enabled = true
+verify_jwt = false
+
+[functions.refund]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
