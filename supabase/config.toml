@@ -288,6 +288,18 @@ max_frequency = "5s"
 # seed time — no runtime promotion race.
 9000001101 = "123456"
 9000001301 = "123456"
+# Phase 6 store-fulfilment suite: its own throwaway customer, so the
+# stock-out refunds it triggers never touch the wallet of 9990000001-03,
+# which the Phase 3 auth suite asserts is exactly 0.
+9990000010 = "123456"
+# Phase 6 store-fulfilment suite: a packer scoped to the seed store and a
+# second packer scoped to a different store, so the cross-store rejection
+# is proved with a real JWT rather than a service-role fake. Seeded (not
+# promoted at runtime) because the role/store_id claims are minted by
+# custom_access_token_hook at sign-in — a later promotion would leave the
+# already-issued JWT stale.
+9000001102 = "123456"
+9000001103 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
@@ -449,6 +461,20 @@ enabled = true
 verify_jwt = false
 
 [functions.refund]
+enabled = true
+verify_jwt = false
+
+# ---- Phase 6 store fulfilment (API_CONTRACTS.md §3) ----
+# verify_jwt = false on both, same reasoning as create_order / refund:
+# the functions verify the caller themselves via _shared/context.ts so a
+# missing or expired token returns the AUTH_REQUIRED envelope rather than
+# a bare gateway 401. Authorization proper (packer role + store scope) is
+# resolved from staff_roles inside the database functions.
+[functions.mark_packed]
+enabled = true
+verify_jwt = false
+
+[functions.mark_stock_out]
 enabled = true
 verify_jwt = false
 

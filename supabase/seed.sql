@@ -12,7 +12,10 @@
 -- 1. Store (one campus, per dossier P0 scope) + zones
 -- ---------------------------------------------------------------
 insert into stores (id, name, is_open, opens_at, closes_at, max_queue_depth) values
-  ('00000000-0000-4000-8000-000000000001', 'Craavee — Campus Micro-Store', true, '10:00', '02:00', 9999);
+  ('00000000-0000-4000-8000-000000000001', 'Craavee — Campus Micro-Store', true, '10:00', '02:00', 9999),
+  -- Phase 6: a second store exists only so the fulfilment suite can prove
+  -- a packer scoped elsewhere is refused. It carries no catalogue.
+  ('00000000-0000-4000-8000-00000000000f', 'Craavee — North Gate (fixture)', true, '10:00', '02:00', 9999);
 
 insert into zones (id, store_id, name, delivery_fee, is_serviceable) values
   ('00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000001', 'Hostel Block A–C', 1000, true),
@@ -68,7 +71,11 @@ insert into auth.users (id, phone, aud, role, instance_id, confirmation_token, r
   ('00000000-0000-4000-8000-000000001202', '9000001202', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   ('00000000-0000-4000-8000-000000001203', '9000001203', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- admin
-  ('00000000-0000-4000-8000-000000001301', '9000001301', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
+  ('00000000-0000-4000-8000-000000001301', '9000001301', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  -- Phase 6 fulfilment-suite packers: 1102 in the seed store, 1103 in the
+  -- fixture store above (the cross-store rejection case)
+  ('00000000-0000-4000-8000-000000001102', '9000001102', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001103', '9000001103', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
 
 update profiles set full_name = 'Aarav Sharma', acquisition_campaign_id = '00000000-0000-4000-8000-000000000201',
   referral_code = 'AARAV01' where id = '00000000-0000-4000-8000-000000001001';
@@ -119,7 +126,11 @@ insert into auth.users (id, phone, aud, role, instance_id, confirmation_token, r
   -- 5 webhook/refund wallet mutations never race the Phase 4 order suite
   -- (both can run concurrently under `node --test`).
   ('00000000-0000-4000-8000-000000001907', '9990000007', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001908', '9990000008', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
+  ('00000000-0000-4000-8000-000000001908', '9990000008', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  -- Phase 6 store-fulfilment suite's own customer. Seeded like the rest:
+  -- the local stack has no SMS provider, so signInWithOtp cannot create a
+  -- user and a test_otp phone only verifies if its auth.users row exists.
+  ('00000000-0000-4000-8000-000000001910', '9990000010', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
 
 -- A matching `auth.identities` row (provider='phone') is also required —
 -- a real signup writes one, and GoTrue's own account-linking expects it
@@ -139,7 +150,9 @@ where phone is not null;
 -- ---------------------------------------------------------------
 insert into staff_roles (profile_id, role, store_id) values
   ('00000000-0000-4000-8000-000000001101', 'packer', '00000000-0000-4000-8000-000000000001'),
-  ('00000000-0000-4000-8000-000000001301', 'admin', null);
+  ('00000000-0000-4000-8000-000000001301', 'admin', null),
+  ('00000000-0000-4000-8000-000000001102', 'packer', '00000000-0000-4000-8000-000000000001'),
+  ('00000000-0000-4000-8000-000000001103', 'packer', '00000000-0000-4000-8000-00000000000f');
 
 insert into runners (id, profile_id, store_id, is_online) values
   ('00000000-0000-4000-8000-000000001210', '00000000-0000-4000-8000-000000001201', '00000000-0000-4000-8000-000000000001', true),

@@ -210,6 +210,8 @@ export type Database = {
           order_id: string
           product_id: string
           qty: number
+          stock_out_at: string | null
+          stock_out_by: string | null
           unit_price: number
         }
         Insert: {
@@ -219,6 +221,8 @@ export type Database = {
           order_id: string
           product_id: string
           qty: number
+          stock_out_at?: string | null
+          stock_out_by?: string | null
           unit_price: number
         }
         Update: {
@@ -228,6 +232,8 @@ export type Database = {
           order_id?: string
           product_id?: string
           qty?: number
+          stock_out_at?: string | null
+          stock_out_by?: string | null
           unit_price?: number
         }
         Relationships: [
@@ -250,6 +256,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products_with_availability"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_stock_out_by_fkey"
+            columns: ["stock_out_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1120,6 +1133,10 @@ export type Database = {
       }
     }
     Functions: {
+      assert_fulfilment_actor: {
+        Args: { p_actor_id: string; p_store_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       auth_role: { Args: never; Returns: string }
       auth_runner_id: { Args: never; Returns: string }
       auth_store_id: { Args: never; Returns: string }
@@ -1150,6 +1167,45 @@ export type Database = {
         Args: { p_gateway_order_ref: string; p_order_id: string }
         Returns: undefined
       }
+      process_mark_packed: {
+        Args: { p_actor_id: string; p_order_id: string }
+        Returns: Json
+      }
+      process_payment_webhook: {
+        Args: {
+          p_amount: number
+          p_currency: string
+          p_event_id: string
+          p_gateway: string
+          p_order_ref: string
+          p_outcome: string
+          p_payload: Json
+          p_payment_ref: string
+        }
+        Returns: Json
+      }
+      process_refund: {
+        Args: {
+          p_actor_id: string
+          p_amount: number
+          p_destination?: string
+          p_idempotency_key: string
+          p_order_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      process_stock_out: {
+        Args: {
+          p_actor_id: string
+          p_available_qty: number
+          p_delist: boolean
+          p_idempotency_key: string
+          p_order_id: string
+          p_order_item_id: string
+        }
+        Returns: Json
+      }
       promo_order_discount: {
         Args: { p_subtotal: number; p_type: string; p_value: number }
         Returns: number
@@ -1160,6 +1216,13 @@ export type Database = {
           p_promo: Database["public"]["Tables"]["promos"]["Row"]
         }
         Returns: string
+      }
+      staff_scope: {
+        Args: { p_profile_id: string }
+        Returns: {
+          role: Database["public"]["Enums"]["user_role"]
+          store_id: string
+        }[]
       }
       validate_promo_preview: {
         Args: { p_code: string; p_customer_id: string; p_subtotal: number }

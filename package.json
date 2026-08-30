@@ -24,7 +24,7 @@
     "db:test": "scripts/run-db-tests.sh",
     "functions:serve": "scripts/serve-functions.sh",
     "functions:test": "cd supabase/functions && deno test --allow-env _shared/gateway/gateway.test.ts",
-    "functions:check": "cd supabase/functions && deno check create_order/index.ts validate_promo/index.ts expire_stale_reservations/index.ts payment_webhook/index.ts refund/index.ts _dev/serve.ts",
+    "functions:check": "cd supabase/functions && deno check create_order/index.ts validate_promo/index.ts expire_stale_reservations/index.ts payment_webhook/index.ts refund/index.ts mark_packed/index.ts mark_stock_out/index.ts _dev/serve.ts",
     "test:integration": "npm run test:integration -w @craavee/customer-runner",
     "gen": "supabase gen types typescript --local 2>/dev/null > packages/types/src/database.ts"
   },
