@@ -69,6 +69,13 @@ jobs:
         with:
           version: 2.113.0
 
+      # The order integration suite spawns the real handlers through
+      # supabase/functions/_dev/serve.ts, which is Deno - so Deno is needed
+      # from this PR on, not from the payments PR.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Start local Supabase stack
         run: supabase start
 
