@@ -59,7 +59,7 @@ close to the floor, and none was deferred for space reasons.
 | System image `android-36;google_apis;arm64-v8a` | rev 7 | 4.3 GB | `~/Library/Android/sdk` | **INSTALLED** |
 | AVD `Craavee_Pixel7_API36` | Pixel 7, API 36 | 1.6 GB | `~/.android/avd` | **INSTALLED** |
 | **Xcode** | **26.6** (17F113) | 3.6 GB | `/Applications/Xcode.app` | **INSTALLED** *(by the user, mid-task)* |
-| iOS 26.5 Simulator runtime | 23F77 arm64 | 8.52 GB | Xcode-managed | **INSTALLED** |
+| iOS 26.5 Simulator runtime | 23F77 arm64 | 8.52 GB | Xcode-managed | **IN PROGRESS** — see §6 |
 
 **NOT INSTALLED, deliberately:**
 
@@ -119,10 +119,27 @@ entry transformed its way deep into React Native before failing on a
 module resolution error (§7, item 1) — not a hang, not a filesystem
 stall, and not a timeout.
 
-### iOS — see §7
+### iOS — PARTIALLY VERIFIED
 
-`xcodebuild -version` → Xcode 26.6. `simctl` available. iOS 26.5 SDK
-present and the simulator runtime installed.
+| Check | Result |
+| --- | --- |
+| `xcodebuild -version` | **Xcode 26.6** (17F113) |
+| `xcode-select -p` | `/Applications/Xcode.app/Contents/Developer` |
+| `simctl` | **available** |
+| iOS SDK | **iOS 26.5** (`iphoneos26.5`, `iphonesimulator26.5`) |
+| iOS **simulator runtime** | **downloading at time of writing** (8.52 GB) |
+| Simulator boot | **not yet verified** — blocked on the runtime |
+
+Xcode 26 ships thin: the SDK needed to *build* is present, but the
+runtime the Simulator *boots* is a separate 8.52 GB download
+(`xcodebuild -downloadPlatform iOS`). Until it completes,
+`xcrun simctl list runtimes` is empty and no simulator can start.
+
+**Note on the Xcode licence.** Immediately after Xcode appeared,
+`xcode-select` pointed at it with the licence unaccepted, which broke
+`git` and `clang` machine-wide (`rc=69`). Accepting it requires
+`sudo xcodebuild -license accept`. It was resolved during this task; if
+it recurs after an Xcode update, that is the fix.
 
 ### Web / project baseline — VERIFIED, unchanged
 
