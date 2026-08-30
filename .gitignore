@@ -9,6 +9,20 @@ out
 dist
 build
 
+# Expo / React Native (apps/customer-runner)
+.expo
+.expo-shared
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# exFAT/AppleDouble sidecar files — this repo has lived on an exFAT volume
+# during development (see docs/audit/PHASE_0_REPOSITORY_AUDIT.md); macOS
+# creates one of these next to any file it touches on that filesystem.
+._*
+
 # Misc
 .DS_Store
 *.pem
