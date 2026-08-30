@@ -288,6 +288,14 @@ max_frequency = "5s"
 # seed time — no runtime promotion race.
 9000001101 = "123456"
 9000001301 = "123456"
+# Phase 6 store-fulfilment suite: a packer scoped to the seed store and a
+# second packer scoped to a different store, so the cross-store rejection
+# is proved with a real JWT rather than a service-role fake. Seeded (not
+# promoted at runtime) because the role/store_id claims are minted by
+# custom_access_token_hook at sign-in — a later promotion would leave the
+# already-issued JWT stale.
+9000001102 = "123456"
+9000001103 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
