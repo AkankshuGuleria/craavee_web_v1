@@ -74,6 +74,17 @@ export async function handleVerifyDeliveryCode(req: Request): Promise<Response> 
     }
 
     const r = data as Record<string, unknown>;
+
+    // RATE_LIMITED and DELIVERY_CODE_INVALID come back as a value rather
+    // than a raised exception, so the attempt row the DB function wrote
+    // actually commits (a raise would roll it back and make the
+    // 5-attempt ceiling meaningless). Mapped here to the same canonical
+    // errors the contract specifies.
+    if (typeof r.error === "string") {
+      const code = r.error as Parameters<typeof fail>[0];
+      return fail(code, code, httpStatusFor(code));
+    }
+
     return ok({
       orderId: r.orderId,
       status: r.status,

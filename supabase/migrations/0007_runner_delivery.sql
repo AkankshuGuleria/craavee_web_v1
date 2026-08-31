@@ -226,14 +226,17 @@ begin
       using errcode = 'P0001';
   end if;
 
-  -- ---- Step 6: mint the delivery code. Generated here, at the moment
+  -- ---- Step 6: mint the delivery code. pgcrypto lives in the
+  -- `extensions` schema on Supabase, and these functions deliberately
+  -- run with `search_path = public`, so crypt/gen_salt are qualified
+  -- explicitly rather than widening the path. Generated here, at the moment
   -- of assignment (D14: "generated server-side when the order
   -- transitions to assigned"), never earlier - an unclaimed order has no
   -- code to leak.
   v_code := lpad((floor(random() * 10000))::int::text, 4, '0');
 
   update orders
-     set delivery_code_hash = crypt(v_code, gen_salt('bf')),
+     set delivery_code_hash = extensions.crypt(v_code, extensions.gen_salt('bf')),
          status             = 'assigned',
          runner_id          = v_runner
    where id = p_order_id;
@@ -486,8 +489,16 @@ begin
     and action = 'delivery_code_attempt'
     and created_at > now() - interval '15 minutes';
 
+  -- NOTE: rate-limit and wrong-code outcomes are RETURNED, not raised.
+  -- A `raise` aborts the transaction, which would roll back the
+  -- rate_limit_events row we just wrote - so a wrong guess would cost
+  -- the attacker nothing and the 5-attempt ceiling would be decorative.
+  -- Returning lets the attempt log commit. The Edge Function turns these
+  -- into the canonical RATE_LIMITED / DELIVERY_CODE_INVALID responses,
+  -- so the API contract is unchanged. State-machine and authorization
+  -- failures still raise, because those must not commit anything.
   if v_attempts >= 5 then
-    raise exception 'RATE_LIMITED: too many delivery code attempts' using errcode = 'P0001';
+    return jsonb_build_object('orderId', p_order_id, 'error', 'RATE_LIMITED');
   end if;
 
   -- Logged before comparing, so a wrong guess costs an attempt even if
@@ -506,8 +517,8 @@ begin
       using errcode = 'P0001';
   end if;
 
-  if v_hash is null or crypt(p_code, v_hash) <> v_hash then
-    raise exception 'DELIVERY_CODE_INVALID: code does not match' using errcode = 'P0001';
+  if v_hash is null or extensions.crypt(p_code, v_hash) <> v_hash then
+    return jsonb_build_object('orderId', p_order_id, 'error', 'DELIVERY_CODE_INVALID');
   end if;
 
   update orders set status = 'delivered' where id = p_order_id;
@@ -647,7 +658,7 @@ begin
   update orders
      set runner_id          = p_runner_id,
          status             = 'assigned',
-         delivery_code_hash = crypt(v_code, gen_salt('bf'))
+         delivery_code_hash = extensions.crypt(v_code, extensions.gen_salt('bf'))
    where id = p_order_id;
 
   insert into order_delivery_codes (order_id, code)
