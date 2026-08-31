@@ -65,3 +65,42 @@ export const markStockOutSchema = z.object({
   idempotencyKey: uuid,
 });
 export type MarkStockOutBody = z.infer<typeof markStockOutSchema>;
+
+// ---- Phase 7: runner + last-mile delivery -------------------------
+// Mirrors packages/validation's runner request schemas (the Deno side
+// cannot import the npm workspace package). Every one of these carries
+// an order id and nothing that could stand in for identity: no runnerId,
+// no role, no storeId. Those are resolved server-side from the JWT and
+// staff_roles, never accepted from the request (Phase 7 §8/§22).
+
+// claim_job. The order id is the whole request; who is claiming is the
+// caller's own resolved runners.id (D28).
+export const claimJobSchema = z.object({ orderId: uuid });
+export type ClaimJobBody = z.infer<typeof claimJobSchema>;
+
+export const markPickedUpSchema = z.object({ orderId: uuid });
+export type MarkPickedUpBody = z.infer<typeof markPickedUpSchema>;
+
+export const releaseJobSchema = z.object({
+  orderId: uuid,
+  reason: z.string().max(500).optional(),
+});
+export type ReleaseJobBody = z.infer<typeof releaseJobSchema>;
+
+// verify_delivery_code. `code` is a guess the runner types; it is
+// compared against orders.delivery_code_hash server-side and is never
+// logged or echoed back (D14).
+export const verifyDeliveryCodeSchema = z.object({
+  orderId: uuid,
+  code: z.string().regex(/^\d{4}$/, "must be exactly 4 digits"),
+});
+export type VerifyDeliveryCodeBody = z.infer<typeof verifyDeliveryCodeSchema>;
+
+// admin_reassign. `runnerId` is a runners.id (D28), not a profile id.
+// Omitting it releases the order back to the general claim queue rather
+// than naming a runner (API_CONTRACTS.md).
+export const adminReassignSchema = z.object({
+  orderId: uuid,
+  runnerId: uuid.optional(),
+});
+export type AdminReassignBody = z.infer<typeof adminReassignSchema>;

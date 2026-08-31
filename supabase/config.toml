@@ -300,6 +300,14 @@ max_frequency = "5s"
 # already-issued JWT stale.
 919000001102 = "123456"
 919000001103 = "123456"
+# Phase 7 runner-integration-suite identities: three runners in the seed
+# store (1201/1202 online, 1203 offline), one in the fixture store (1204)
+# for the cross-store rejection case, and a dedicated customer (9990000011).
+919000001201 = "123456"
+919000001202 = "123456"
+919000001203 = "123456"
+919000001204 = "123456"
+919990000011 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
@@ -475,6 +483,30 @@ enabled = true
 verify_jwt = false
 
 [functions.mark_stock_out]
+enabled = true
+verify_jwt = false
+
+# Phase 7 — runner + last-mile delivery. verify_jwt = false matches every
+# other function here: the JWT is verified inside the handler by
+# verifyCaller(), which also resolves the caller's role, rather than by
+# the platform gate (PHASE_4_IMPLEMENTATION_REPORT.md §20).
+[functions.claim_job]
+enabled = true
+verify_jwt = false
+
+[functions.mark_picked_up]
+enabled = true
+verify_jwt = false
+
+[functions.release_job]
+enabled = true
+verify_jwt = false
+
+[functions.verify_delivery_code]
+enabled = true
+verify_jwt = false
+
+[functions.admin_reassign]
 enabled = true
 verify_jwt = false
 

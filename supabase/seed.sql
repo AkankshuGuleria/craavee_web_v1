@@ -75,7 +75,10 @@ insert into auth.users (id, phone, aud, role, instance_id, confirmation_token, r
   -- Phase 6 fulfilment-suite packers: 1102 in the seed store, 1103 in the
   -- fixture store above (the cross-store rejection case)
   ('00000000-0000-4000-8000-000000001102', '919000001102', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001103', '919000001103', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
+  ('00000000-0000-4000-8000-000000001103', '919000001103', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  -- Phase 7 runner-suite identities: 1204 is a runner in the fixture
+  -- store (cross-store rejection).
+  ('00000000-0000-4000-8000-000000001204', '919000001204', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
 
 update profiles set full_name = 'Aarav Sharma', acquisition_campaign_id = '00000000-0000-4000-8000-000000000201',
   referral_code = 'AARAV01' where id = '00000000-0000-4000-8000-000000001001';
@@ -130,7 +133,10 @@ insert into auth.users (id, phone, aud, role, instance_id, confirmation_token, r
   -- Phase 6 store-fulfilment suite's own customer. Seeded like the rest:
   -- the local stack has no SMS provider, so signInWithOtp cannot create a
   -- user and a test_otp phone only verifies if its auth.users row exists.
-  ('00000000-0000-4000-8000-000000001910', '919990000010', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
+  ('00000000-0000-4000-8000-000000001910', '919990000010', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  -- Phase 7 runner-integration-suite customer. Dedicated for the same
+  -- reason as 1910: the suites run concurrently against one database.
+  ('00000000-0000-4000-8000-000000001911', '919990000011', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
 
 -- A matching `auth.identities` row (provider='phone') is also required —
 -- a real signup writes one, and GoTrue's own account-linking expects it
@@ -152,12 +158,25 @@ insert into staff_roles (profile_id, role, store_id) values
   ('00000000-0000-4000-8000-000000001101', 'packer', '00000000-0000-4000-8000-000000000001'),
   ('00000000-0000-4000-8000-000000001301', 'admin', null),
   ('00000000-0000-4000-8000-000000001102', 'packer', '00000000-0000-4000-8000-000000000001'),
-  ('00000000-0000-4000-8000-000000001103', 'packer', '00000000-0000-4000-8000-00000000000f');
+  ('00000000-0000-4000-8000-000000001103', 'packer', '00000000-0000-4000-8000-00000000000f'),
+  -- Phase 7: the runners below had `runners` rows but no staff_roles row,
+  -- so custom_access_token_hook emitted `customer` for them and every
+  -- runner-actor Edge Function refused them. A runner is a staff role
+  -- (RBAC_MATRIX.md §2: "staff_roles row, role='runner', store_id
+  -- required"); the runners table carries operational state, not the
+  -- role claim.
+  ('00000000-0000-4000-8000-000000001201', 'runner', '00000000-0000-4000-8000-000000000001'),
+  ('00000000-0000-4000-8000-000000001202', 'runner', '00000000-0000-4000-8000-000000000001'),
+  ('00000000-0000-4000-8000-000000001203', 'runner', '00000000-0000-4000-8000-000000000001'),
+  ('00000000-0000-4000-8000-000000001204', 'runner', '00000000-0000-4000-8000-00000000000f');
 
 insert into runners (id, profile_id, store_id, is_online) values
   ('00000000-0000-4000-8000-000000001210', '00000000-0000-4000-8000-000000001201', '00000000-0000-4000-8000-000000000001', true),
   ('00000000-0000-4000-8000-000000001220', '00000000-0000-4000-8000-000000001202', '00000000-0000-4000-8000-000000000001', true),
-  ('00000000-0000-4000-8000-000000001230', '00000000-0000-4000-8000-000000001203', '00000000-0000-4000-8000-000000000001', false);
+  ('00000000-0000-4000-8000-000000001230', '00000000-0000-4000-8000-000000001203', '00000000-0000-4000-8000-000000000001', false),
+  -- Phase 7: a runner in the fixture store, so the integration suite can
+  -- prove store scoping the same way Phase 6 proves it for packers.
+  ('00000000-0000-4000-8000-000000001240', '00000000-0000-4000-8000-000000001204', '00000000-0000-4000-8000-00000000000f', true);
 
 -- ---------------------------------------------------------------
 -- 5. Structured addresses (D15 — block/floor/room, never free text)
