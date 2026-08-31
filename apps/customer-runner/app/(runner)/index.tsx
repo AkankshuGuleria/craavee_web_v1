@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
 import { useActiveJob, useClaimJob, useRunnerQueue, type QueueJob } from "../../hooks/useRunnerJobs";
+import { useRunnerRealtime, useRunnerStore } from "../../hooks/useRunnerRealtime";
 import { toRunnerUiError } from "../../lib/runner/errors";
 import { supabase } from "../../lib/supabase";
 import { useState } from "react";
@@ -31,6 +32,11 @@ export default function RunnerQueueScreen() {
   const router = useRouter();
   const queue = useRunnerQueue();
   const active = useActiveJob();
+  // D21: live job availability. The subscription only invalidates — the
+  // list below still comes from an RLS-scoped refetch, so a duplicate
+  // event cannot duplicate a job and a missed one cannot lose it.
+  const storeId = useRunnerStore();
+  const live = useRunnerRealtime(storeId);
   const claim = useClaimJob();
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +69,12 @@ export default function RunnerQueueScreen() {
           <Text className="text-base font-semibold text-brand">Log out</Text>
         </Pressable>
       </View>
+
+      {live === "offline" ? (
+        <Text className="px-5 pb-2 text-sm text-inkdeep/60">
+          Live updates paused — pull down to refresh.
+        </Text>
+      ) : null}
 
       {error ? (
         <Text className="px-5 pb-2 text-base text-danger">{error}</Text>

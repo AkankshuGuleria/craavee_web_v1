@@ -21,6 +21,7 @@ import { OpsShell } from "@craavee/ui";
 
 import { STORE_NAV } from "@/lib/nav";
 import { requireStaff } from "@/lib/auth";
+import { RealtimeRefresh } from "@/lib/realtime/RealtimeRefresh";
 import { createClient } from "@/lib/supabase/server";
 
 export const revalidate = 15;
@@ -33,7 +34,7 @@ function minutesAgo(iso: string): string {
 }
 
 export default async function StorePackingPage() {
-  await requireStaff();
+  const staff = await requireStaff();
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -57,6 +58,12 @@ export default async function StorePackingPage() {
           : `${orders.length} ${orders.length === 1 ? "order" : "orders"} waiting to be packed`
       }
     >
+      {/* Phase 8 (D21): a new confirmed order now appears without a
+          manual refresh. The subscription only triggers router.refresh();
+          the query above still decides what is shown, so RLS remains the
+          boundary and a duplicate event cannot duplicate a row. */}
+      <RealtimeRefresh table="orders" storeId={staff.storeId} />
+
       <div className="max-w-2xl space-y-4">
         {error && (
           <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
