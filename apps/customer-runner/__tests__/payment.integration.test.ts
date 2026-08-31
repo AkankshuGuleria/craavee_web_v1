@@ -164,7 +164,7 @@ before(async () => {
   await must(svc.from("products").insert({ id: F.p1, store_id: F.store, name: "P5-1", mrp: 6000, sale_price: 5000, category: "X", is_listed: true }), "product");
   await must(svc.from("inventory").insert({ store_id: F.store, product_id: F.p1, qty_on_hand: 500, qty_reserved: 0 }), "inventory");
 
-  for (const [k, phone] of [["a", "9990000007"], ["b", "9990000008"]] as const) {
+  for (const [k, phone] of [["a", "+919990000007"], ["b", "+919990000008"]] as const) {
     const { jwt, id } = await signIn(phone);
     const addr = randomUUID();
     await svc.from("addresses").insert({ id: addr, customer_id: id, zone_id: F.zone, block: `P5-${k}`, room: "1" });
@@ -173,7 +173,7 @@ before(async () => {
     await svc.from("wallet_ledger").insert({ customer_id: id, delta: 1_000_000, reason: "manual_adjustment" });
     await svc.from("profiles").update({ wallet_balance: 1_000_000 }).eq("id", id);
   }
-  ADMIN_JWT = (await signIn("9000001301")).jwt;
+  ADMIN_JWT = (await signIn("+919000001301")).jwt;
 });
 
 after(async () => { serverProc?.kill("SIGKILL"); });

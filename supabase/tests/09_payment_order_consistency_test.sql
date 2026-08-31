@@ -12,7 +12,7 @@ select plan(3);  -- positive sweep aggregate, negative sweep aggregate, statemen
 insert into stores (id, name) values ('aaaaaaaa-0000-4000-8000-000000000001', 'Test Store');
 insert into zones (id, store_id, name, delivery_fee)
   values ('aaaaaaaa-0000-4000-8000-000000000101', 'aaaaaaaa-0000-4000-8000-000000000001', 'Zone A', 1000);
-insert into auth.users (id, phone) values ('aaaaaaaa-0000-4000-8000-000000001001', '9990000101');
+insert into auth.users (id, phone) values ('aaaaaaaa-0000-4000-8000-000000001001', '919990000101');
 insert into addresses (id, customer_id, zone_id, block, room) values
   ('aaaaaaaa-0000-4000-8000-000000002001', 'aaaaaaaa-0000-4000-8000-000000001001', 'aaaaaaaa-0000-4000-8000-000000000101', 'Block A', '101');
 

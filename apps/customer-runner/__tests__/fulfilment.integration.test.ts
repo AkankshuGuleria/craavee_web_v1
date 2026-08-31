@@ -8,8 +8,8 @@
 // database, same auth path as production; only the process wrapper
 // differs.
 //
-// Staff identities are seeded (9000001102 packer @ seed store,
-// 9000001103 packer @ fixture store, 9000001301 admin) because the
+// Staff identities are seeded (+919000001102 packer @ seed store,
+// +919000001103 packer @ fixture store, +919000001301 admin) because the
 // role/store_id claims are minted by custom_access_token_hook at sign-in.
 //
 // Canonical: API_CONTRACTS.md §"Store-Side Reconciliation",
@@ -209,10 +209,10 @@ before(async () => {
     ),
     "inventory",
   );
-  packerJwt = (await signIn("9000001102")).jwt;
-  otherPackerJwt = (await signIn("9000001103")).jwt;
-  adminJwt = (await signIn("9000001301")).jwt;
-  const cust = await signIn("9990000010"); // dedicated: this suite credits wallets
+  packerJwt = (await signIn("+919000001102")).jwt;
+  otherPackerJwt = (await signIn("+919000001103")).jwt;
+  adminJwt = (await signIn("+919000001301")).jwt;
+  const cust = await signIn("+919990000010"); // dedicated: this suite credits wallets
   customerJwt = cust.jwt;
   CUSTOMER = cust.id;
 

@@ -33,8 +33,8 @@ const SUPABASE_ANON_KEY =
 // were necessary for these to actually authenticate over the real Auth
 // API, not just resolve in a direct-psql RLS test).
 const TEST_OTP_CODE = "123456";
-const CUSTOMER_A_PHONE = "9990000001";
-const CUSTOMER_B_PHONE = "9990000002";
+const CUSTOMER_A_PHONE = "+919990000001";
+const CUSTOMER_B_PHONE = "+919990000002";
 
 function freshClient() {
   return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -87,7 +87,10 @@ test("session persists across a getSession() call without re-authenticating — 
   const client = await signIn(CUSTOMER_A_PHONE);
   const { data } = await client.auth.getSession();
   assert.ok(data.session, "the same client instance must still report a session");
-  assert.equal(data.session!.user.phone, CUSTOMER_A_PHONE);
+  // GoTrue stores the phone normalised (leading + stripped), so the
+  // stored value is deliberately compared against that form, not the
+  // E.164 string the app sends.
+  assert.equal(data.session!.user.phone, normalise(CUSTOMER_A_PHONE));
 });
 
 test("an authenticated customer can read their own profile, created by the DB trigger (§20.8)", async () => {
@@ -99,7 +102,9 @@ test("an authenticated customer can read their own profile, created by the DB tr
     .eq("id", user.user!.id)
     .single();
   assert.equal(error, null);
-  assert.equal(profile!.phone, CUSTOMER_A_PHONE);
+  // profiles.phone is copied verbatim from auth.users.phone by
+  // handle_new_user, so it carries the same normalised form.
+  assert.equal(profile!.phone, normalise(CUSTOMER_A_PHONE));
   assert.equal(profile!.wallet_balance, 0);
 });
 
@@ -172,4 +177,71 @@ test("querying an endpoint that cannot be reached fails the request rather than 
   const { data, error } = await badClient.from("products_with_availability").select("id");
   assert.equal(data, null);
   assert.ok(error, "an unreachable database must surface as an error the UI can show a retry action for");
+});
+
+// ---------------------------------------------------------------
+// Phone-format contract (added after native validation). The app builds
+// E.164 (`+91` + 10 digits) and hands that to `signInWithOtp`/`verifyOtp`.
+// GoTrue normalises a phone to digits only — it strips the leading `+`
+// — and both `FindUserByPhoneAndAudience` and the `[auth.sms.test_otp]`
+// lookup use that normalised form. So the canonical stored value is
+// `91XXXXXXXXXX`, and `config.toml`'s test-OTP keys must match it.
+//
+// These previously disagreed: the app sent `+919990000001` (normalising
+// to `919990000001`) while the fixtures were the bare `9990000001`, so
+// the app's own sign-in could never resolve a seeded user. Nothing
+// caught it, because every suite called `verifyOtp` with the bare
+// fixture constant and so never exercised the format the app actually
+// sends. These three tests close that gap.
+// ---------------------------------------------------------------
+
+const E164 = /^\+[1-9]\d{7,14}$/;
+
+function normalise(phone: string) {
+  return phone.replace(/^\+/, "");
+}
+
+test("phone contract: the suite's own constants are canonical E.164", () => {
+  for (const p of [CUSTOMER_A_PHONE, CUSTOMER_B_PHONE]) {
+    assert.match(p, E164, `${p} must be E.164 — the format the app sends`);
+  }
+});
+
+test("phone contract: signing in with the app's E.164 form resolves the seeded user", async () => {
+  // The regression itself: this is exactly what `phone.tsx` sends.
+  const client = await signIn(CUSTOMER_A_PHONE);
+  const { data } = await client.auth.getUser();
+  assert.equal(
+    data.user?.phone,
+    normalise(CUSTOMER_A_PHONE),
+    "GoTrue stores the phone with the leading + stripped; seed.sql must match that form",
+  );
+});
+
+test("phone contract: every configured test-OTP phone has a matching seeded user", async () => {
+  // Guards the drift that caused the original bug — config.toml and
+  // seed.sql agreeing is what makes local sign-in work at all.
+  const { readFileSync } = await import("node:fs");
+  const cfg = readFileSync(new URL("../../../supabase/config.toml", import.meta.url), "utf8");
+  const block = cfg.slice(cfg.indexOf("[auth.sms.test_otp]"));
+  const configured = [...block.matchAll(/^(\d{6,15})\s*=/gm)].map((m) => m[1]);
+
+  assert.ok(configured.length > 0, "expected [auth.sms.test_otp] entries");
+
+  for (const digits of configured) {
+    assert.match(
+      `+${digits}`,
+      E164,
+      `test_otp key ${digits} is not a canonical E.164 number without its +`,
+    );
+    // Proven through the real Auth API rather than a direct DB read: if
+    // the seeded row is missing or shaped wrong, verifyOtp is what breaks.
+    const client = freshClient();
+    const { error } = await client.auth.verifyOtp({
+      phone: `+${digits}`,
+      token: TEST_OTP_CODE,
+      type: "sms",
+    });
+    assert.equal(error, null, `test_otp phone +${digits} has no usable seeded auth.users row`);
+  }
 });

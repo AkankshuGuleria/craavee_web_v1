@@ -15,7 +15,7 @@ insert into stores (id, name) values ('50000000-0000-0000-0000-000000000001', 'S
 -- ============================================================
 -- handle_new_user — profile creation on auth.users insert (§21)
 -- ============================================================
-insert into auth.users (id, phone) values ('c0000000-0000-0000-0000-000000000001', '9890000001');
+insert into auth.users (id, phone) values ('c0000000-0000-0000-0000-000000000001', '919890000001');
 
 select is(
   (select count(*)::int from profiles where id = 'c0000000-0000-0000-0000-000000000001'),
@@ -23,7 +23,7 @@ select is(
 
 select is(
   (select phone from profiles where id = 'c0000000-0000-0000-0000-000000000001'),
-  '9890000001', 'handle_new_user: the new profile carries the auth user phone');
+  '919890000001', 'handle_new_user: the new profile carries the auth user phone');
 
 select is(
   (select wallet_balance from profiles where id = 'c0000000-0000-0000-0000-000000000001'),
@@ -39,14 +39,14 @@ select is(
   'Real Name', 'handle_new_user ON CONFLICT DO NOTHING: an existing profile is never overwritten on retry (§21)');
 select is(
   (select phone from profiles where id = 'c0000000-0000-0000-0000-000000000001'),
-  '9890000001', 'handle_new_user ON CONFLICT DO NOTHING: phone is not clobbered on retry');
+  '919890000001', 'handle_new_user ON CONFLICT DO NOTHING: phone is not clobbered on retry');
 
 -- ============================================================
 -- custom_access_token_hook — role claim injection (D8)
 -- ============================================================
 insert into auth.users (id, phone) values
-  ('70000000-0000-0000-0000-000000000001', '9990000101'),   -- becomes packer
-  ('ad000000-0000-0000-0000-000000000001', '9990000201');   -- becomes admin
+  ('70000000-0000-0000-0000-000000000001', '919990000101'),   -- becomes packer
+  ('ad000000-0000-0000-0000-000000000001', '919990000201');   -- becomes admin
 
 -- No staff_roles row yet -> default customer
 select is(

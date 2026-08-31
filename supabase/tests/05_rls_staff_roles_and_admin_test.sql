@@ -8,9 +8,9 @@ select plan(10);
 
 insert into stores (id, name) values ('aaaaaaaa-0000-4000-8000-000000000001', 'Test Store');
 insert into auth.users (id, phone) values
-  ('aaaaaaaa-0000-4000-8000-000000001001', '9990000101'),  -- customer
-  ('aaaaaaaa-0000-4000-8000-000000007001', '9990000701'),  -- admin
-  ('aaaaaaaa-0000-4000-8000-000000006001', '9990000601');  -- packer target for role assignment
+  ('aaaaaaaa-0000-4000-8000-000000001001', '919990000101'),  -- customer
+  ('aaaaaaaa-0000-4000-8000-000000007001', '919990000701'),  -- admin
+  ('aaaaaaaa-0000-4000-8000-000000006001', '919990000601');  -- packer target for role assignment
 insert into staff_roles (profile_id, role, store_id) values
   ('aaaaaaaa-0000-4000-8000-000000007001', 'admin', null);
 insert into products (id, store_id, name, mrp, sale_price, category, is_listed) values

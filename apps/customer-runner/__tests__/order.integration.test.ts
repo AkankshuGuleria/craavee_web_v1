@@ -188,8 +188,8 @@ before(async () => {
   ]), "promos");
 
   // 4. customers — the Phase 4 test-OTP users (config.toml [auth.sms.test_otp]),
-  //    deliberately NOT 9990000001-03 (those belong to the Phase 3 auth suite).
-  for (const [k, phone] of [["a", "9990000004"], ["b", "9990000005"], ["c", "9990000006"]] as const) {
+  //    deliberately NOT +919990000001-03 (those belong to the Phase 3 auth suite).
+  for (const [k, phone] of [["a", "+919990000004"], ["b", "+919990000005"], ["c", "+919990000006"]] as const) {
     const { jwt, id } = await signIn(phone);
     const addr = randomUUID();
     await svc.from("addresses").insert({ id: addr, customer_id: id, zone_id: F.zone, block: `H-${k}`, room: "1" });
@@ -214,7 +214,7 @@ after(async () => {
 /** Delete this suite's fixture subtree in FK-safe order, so a local
  *  re-run without `supabase db reset` still starts clean. */
 async function teardownFixture(): Promise<void> {
-  const testPhones = ["9990000004", "9990000005", "9990000006", "9990000009", "9000001301"];
+  const testPhones = ["+919990000004", "+919990000005", "+919990000006", "+919990000009", "+919000001301"];
   const { data: profs } = await svc.from("profiles").select("id").in("phone", testPhones);
   const ids = (profs ?? []).map((p) => p.id as string);
   const promoCodes = ["P4FLAT", "P4PCT", "P4EXP", "P4MAX1", "P4PU3", "P4WCREDIT", "P4PU1X", "P4PU3B"];
@@ -451,10 +451,10 @@ test("§26 H: a product from a different store -> ITEM_UNAVAILABLE", async () =>
 });
 
 test("§26 L: a non-customer role cannot call create_order -> FORBIDDEN", async () => {
-  // The seeded admin (9000001301) has a staff_roles row from seed time,
+  // The seeded admin (+919000001301) has a staff_roles row from seed time,
   // so its JWT carries the server-injected role=admin claim (D8) — no
   // runtime-promotion race.
-  const { jwt } = await signIn("9000001301");
+  const { jwt } = await signIn("+919000001301");
   const r = await callFn("create_order", order(), { jwt });
   assert.equal(r.status, 403);
   assert.equal(r.code, "FORBIDDEN");

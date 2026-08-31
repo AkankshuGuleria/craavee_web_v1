@@ -262,3 +262,154 @@ runners with neither constraint — remains the path to an installable artifact.
 | **BLOCKED** | `expo run:ios` (upstream `expo-constants` + path space), `expo run:android` (exFAT sidecar race) — both environmental |
 | **NOT VERIFIED** | app launch, root screen render, navigation, reload on either device |
 | **NOT APPLICABLE** | EAS signing credentials, physical devices (explicitly out of scope) |
+
+---
+
+## Update — 2026-08-31: native readiness final fixes
+
+Three issues found during native validation, all fixed here. Status of
+every readiness dimension:
+
+| | |
+| --- | --- |
+| iOS native launch | **VERIFIED** |
+| Android native launch | **VERIFIED** |
+| Web | **VERIFIED** |
+| Phone normalization | **VERIFIED** |
+| Local OTP behaviour | **VERIFIED (test-OTP path) / BLOCKED (real SMS send)** |
+| Git executable modes | **VERIFIED** |
+
+### 1. Phone normalization
+
+**The app was already correct.** `phone.tsx` composes
+`COUNTRY_CODE ("+91") + 10 digits`, producing canonical E.164
+(`+919990000001`) — exactly what `packages/validation`'s
+`phoneE164Schema` (`/^\+[1-9]\d{7,14}$/`) requires, and it explicitly
+rejects a number without the leading `+`.
+
+The fixtures were wrong. `seed.sql` and `config.toml`'s
+`[auth.sms.test_otp]` used bare 10-digit numbers (`9990000001`) with no
+country code at all.
+
+GoTrue normalises a phone to **digits only**, stripping the `+`, and both
+`FindUserByPhoneAndAudience` and the test-OTP lookup use that normalised
+form. So the app's `+919990000001` resolved to `919990000001` and never
+matched the seeded `9990000001`. **The app's own sign-in could not
+authenticate any seeded user.**
+
+Canonical representation, now used everywhere:
+
+| Layer | Value |
+| --- | --- |
+| UI input | 10 digits, `+91` prefix shown |
+| What the app sends | `+919990000001` (E.164) |
+| What GoTrue stores in `auth.users.phone` | `919990000001` (`+` stripped) |
+| `profiles.phone` (copied by `handle_new_user`) | `919990000001` |
+| `config.toml` `[auth.sms.test_otp]` key | `919990000001` |
+| Test constants | `+919990000001` |
+
+The `+`-stripping is a real boundary, not a second format — it is
+GoTrue's storage normalisation of the same E.164 number. The two
+assertions that compare a *stored* value now say so explicitly via a
+`normalise()` helper rather than comparing against the sent form.
+
+Changed: 21 phones in `seed.sql`, 16 test-OTP keys in `config.toml`, 18
+literals across 4 integration suites, 38 fixture phones across 13 pgTAP
+suites. No product code changed.
+
+**Proof.** Driven from the running web app, capturing the actual request:
+
+```
+sentBody: {"phone":"+919990000001"}
+status:   400
+response: {"error_code":"phone_provider_disabled"}
+```
+
+The app sends canonical E.164, and the only remaining failure is the
+missing SMS provider — not the format. After sign-in, PostgREST returned
+`200` for `profiles?id=eq.…001901`, the seeded `919990000001` user.
+
+### 2. Local OTP testing
+
+**Not fixed, because it is not broken — it is a deliberate boundary.**
+
+`supabase start` prints `no SMS provider is enabled. Disabling phone
+login`, and sets `GOTRUE_EXTERNAL_PHONE_ENABLED=false`. So:
+
+| Path | Local | Production |
+| --- | --- | --- |
+| `signInWithOtp` — "Send code" | **BLOCKED** — `400 phone_provider_disabled` | real SMS via the configured provider |
+| `verifyOtp` — "Verify" | **WORKS** via `[auth.sms.test_otp]` | real user-entered code |
+
+Enabling the send step locally would mean configuring a real SMS provider
+(Twilio/MessageBird/Textlocal/Vonage) with fake credentials — Supabase
+offers no mock provider. That is a bypass, so it was **not** added.
+
+**Local testing strategy:** sign in through `verifyOtp` with a seeded
+test-OTP phone and code `123456`, reaching the verify screen directly
+(`craavee://verify?phone=…` on native, `/verify?phone=…` on web). This is
+the mechanism `TEST_STRATEGY.md` already describes, and it is what every
+integration suite uses.
+
+**Why production cannot use it** — three independent reasons, all verified:
+
+1. **The app has no test path.** It only ever calls
+   `supabase.auth.signInWithOtp` / `verifyOtp`. A grep for hardcoded
+   codes, `test_otp`, or any bypass across `apps/*/app`, `apps/*/lib` and
+   `apps/*/src` returns nothing.
+2. **`test_otp` exists only in `supabase/config.toml`**, which is the
+   *local CLI* config. It is never applied to a hosted project — hosted
+   Auth settings live in the Supabase dashboard — and no workflow
+   references it.
+3. **The fixtures are inert without seeded rows.** A test-OTP phone only
+   verifies against an existing `auth.users` row, and those rows come
+   from `seed.sql`, which only ever runs against the local database.
+
+A new guard test asserts every configured test-OTP phone is canonical
+E.164 **and** resolves through the real Auth API. That is what makes
+config/seed drift — the cause of this whole bug — fail loudly instead of
+silently breaking sign-in.
+
+### 3. Git executable modes
+
+`package.json` runs `"db:test": "scripts/run-db-tests.sh"` directly, but
+the scripts were committed `100644`. exFAT synthesised mode `700`, so it
+worked there by accident; on APFS (and in any fresh clone) it fails with
+`EACCES`. `core.filemode = false` means Git neither records nor restores
+the bit, so it had to be set explicitly:
+
+```
+git update-index --chmod=+x scripts/*.sh
+```
+
+Now `100755` for `run-db-tests.sh`, `serve-functions.sh` and
+`clean-apple-sidecars.sh`. `perf-create-order.mjs` is deliberately left
+`100644` — it is invoked via `node`, so an exec bit would be noise.
+
+### Validation
+
+| | iOS (`Craavee_iPhone17`) | Android (`Craavee_Pixel7_API36`) | Web |
+| --- | --- | --- | --- |
+| Metro / launch | pass | pass | pass |
+| Sign-in screen, `+91` prefix | pass | pass | pass |
+| "Send code" → `phone_provider_disabled` | as designed | as designed | as designed |
+| Local test-OTP sign-in | pass | pass | pass |
+| Customer home / catalog (live data) | pass | pass | pass |
+| Cart | pass | pass | n/a |
+| Reload | session + cart persisted | session + cart persisted | session persisted |
+
+Regression: typecheck pass, lint 0 errors (2 pre-existing warnings),
+unit **44/44**, build pass, pgTAP **371/371**, gateway **8/8**,
+integration **103/103** (was 100; +3 new phone-contract tests), stable
+across three consecutive runs.
+
+### Two web-only observations, neither introduced here
+
+1. **A dev-time error overlay on web**: `Cannot manually set color
+   scheme, as dark mode is type 'media'. Please use
+   StyleSheet.setFlag('darkMode', 'class')`. A NativeWind/web dark-mode
+   configuration mismatch. Dismissable, and the app is fully functional
+   behind it, but it fires on every web load and should be fixed.
+2. **A transient `PGRST303 "JWT issued at future"`** on the first catalog
+   query, clearing on reload. Docker VM clock skew against the host, not
+   a product defect.
