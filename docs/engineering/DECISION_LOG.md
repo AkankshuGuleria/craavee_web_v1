@@ -909,6 +909,34 @@ interface byte-for-byte unchanged, which §3 requires). Adding a `refund()`
 method to the adapter interface for gateway-instrument refunds (rejected
 this phase — see D38).
 
+### D39. Delivery-code plaintext lives in `order_delivery_codes`, not on `orders` (Phase 7)
+**Decision.** `orders.delivery_code_hash` keeps the bcrypt hash and stays
+the only thing `verify_delivery_code` reads. The 4-digit plaintext is
+written to a separate `order_delivery_codes` table whose single RLS
+policy is a customer read, and is deleted on `delivered` and on release.
+**Why this was needed.** D14 requires two things that cannot both hold
+against a hash-only column: the customer must be able to *read* the
+plaintext after `assigned` (RBAC_MATRIX.md §5's "Delivery code
+(plaintext)" row gives the customer "R (own order, once, after
+assigned)"), and the code must never be stored in plaintext. A hash
+cannot be un-hashed, so with only `delivery_code_hash` the customer could
+never be shown their code and delivery could never complete. Raised with
+the owner and decided before implementation.
+**Why a separate table rather than a column on `orders`.** Migration 0003
+grants `select on orders to authenticated` table-wide, and
+`orders_select` already lets a runner read every `packed` row at their
+store plus their own assignment. A plaintext column on `orders` would
+therefore be readable by the runner — exactly what D14 forbids ("the
+runner only submits a guess; they don't get to read the answer"). With a
+separate table the runner has no policy at all, so the guarantee is
+structural rather than a column-grant detail that a later `select *`
+could quietly undo.
+**What is preserved from D14.** Hashed at rest for verification; never
+visible to the runner, packer or admin; never logged, never in an audit
+row, never in Sentry; rate-limited to 5 attempts per order per 15
+minutes; minted at assignment and re-minted on reassignment so a replaced
+runner cannot complete a delivery they no longer own.
+
 ### D38. Phase 5 `refund` is wallet-destination only; a full refund of a live order also cancels it
 **Decision.** `refund` (`process_refund`, migration 0005) credits the
 customer's **wallet** (`wallet_ledger` `reason='refund'` +
