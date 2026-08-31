@@ -300,6 +300,14 @@ max_frequency = "5s"
 # already-issued JWT stale.
 919000001102 = "123456"
 919000001103 = "123456"
+# Phase 7 runner-integration-suite identities: three runners in the seed
+# store (1201/1202 online, 1203 offline), one in the fixture store (1204)
+# for the cross-store rejection case, and a dedicated customer (9990000011).
+919000001201 = "123456"
+919000001202 = "123456"
+919000001203 = "123456"
+919000001204 = "123456"
+919990000011 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
