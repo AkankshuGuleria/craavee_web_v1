@@ -80,7 +80,9 @@ export function useOrder(orderId: string | undefined) {
   // When the status last actually changed — not when we last polled.
   // Backing off on "time since the last request" would never back off at
   // all, since every poll resets it.
-  const lastChange = useRef<{ status: string | null; at: number }>({ status: null, at: Date.now() });
+  // `at` is stamped on the first interval evaluation rather than here:
+  // Date.now() during render is impure, and react-hooks/purity rejects it.
+  const lastChange = useRef<{ status: string | null; at: number | null }>({ status: null, at: null });
 
   return useQuery({
     queryKey: ["orders", orderId],
@@ -91,7 +93,7 @@ export function useOrder(orderId: string | undefined) {
     refetchInterval: (q) => {
       const status = (q.state.data as OrderDetail | undefined)?.status ?? null;
 
-      if (status !== lastChange.current.status) {
+      if (lastChange.current.at === null || status !== lastChange.current.status) {
         lastChange.current = { status, at: Date.now() };
       }
 
@@ -100,7 +102,7 @@ export function useOrder(orderId: string | undefined) {
       // Nothing further will happen to a terminal order.
       if (status && TERMINAL.has(status)) return false;
 
-      const idleFor = Date.now() - lastChange.current.at;
+      const idleFor = Date.now() - (lastChange.current.at ?? Date.now());
       return idleFor > BACKOFF_AFTER_MS ? POLL_SLOW_MS : POLL_FAST_MS;
     },
     queryFn: async (): Promise<OrderDetail> => {
