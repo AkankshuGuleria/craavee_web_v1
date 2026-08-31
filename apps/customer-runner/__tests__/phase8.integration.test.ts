@@ -433,12 +433,13 @@ const openListeners: Listener[] = [];
 // channel is removed, and the next subscribe on that client reported
 // SUBSCRIBED while delivering nothing at all. The warm-up in listen()
 // below is what makes a fresh socket safe, so pooling buys nothing.
-async function subscribeOnce(jwt: string, filter?: string): Promise<Listener> {
+async function subscribeOnce(jwt: string | null, filter?: string, topic?: string): Promise<Listener> {
   const client = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
-  client.realtime.setAuth(jwt);
+  // A null jwt leaves the socket on the anon key — the unauthenticated case.
+  if (jwt) client.realtime.setAuth(jwt);
   const received: string[] = [];
   const channel = client
-    .channel(`t8:${randomUUID()}`)
+    .channel(topic ?? `t8:${randomUUID()}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "orders", ...(filter ? { filter } : {}) },
@@ -511,9 +512,9 @@ async function probe(l: Listener, ms: number): Promise<boolean> {
  *  that joins and then delivers nothing has been observed after the
  *  Realtime container restarts, and it never recovers on its own, so the
  *  remedy is a new socket rather than more waiting. */
-async function listen(jwt: string, opts: { warm?: boolean; filter?: string } = {}): Promise<Listener> {
+async function listen(jwt: string | null, opts: { warm?: boolean; filter?: string; topic?: string } = {}): Promise<Listener> {
   for (let attempt = 1; ; attempt++) {
-    const l = await subscribeOnce(jwt, opts.filter);
+    const l = await subscribeOnce(jwt, opts.filter, opts.topic);
     if (!opts.warm) return l;
     if (l.status === "SUBSCRIBED" && (await probe(l, 10_000))) return l;
     if (attempt === 3) {
@@ -613,6 +614,49 @@ test("§27.19 unsubscribing actually stops delivery", async () => {
   await makePackedOrder();
   await settle();
   assert.equal(l.received.length, before, "no events arrive after the channel is removed");
+});
+
+test("§22 an unauthenticated socket receives nothing", async () => {
+  // No JWT at all: the socket stays on the anon key. `anon` has no
+  // SELECT on orders and orders_select grants it nothing, so subscribing
+  // is allowed and receiving is not. A staff listener runs alongside so
+  // a silent Realtime service cannot make this pass by accident.
+  const anon = await listen(null);
+  const staff = await listen(packerJwt, { warm: true });
+  assert.equal(anon.status, "SUBSCRIBED", "joining is not the boundary");
+
+  const orderId = await makePackedOrder();
+  assert.ok(
+    await waitFor(staff, (r) => r.includes(orderId)),
+    "control: an authorized packer did receive the change",
+  );
+  assert.deepEqual(anon.received, [], "an unauthenticated socket receives nothing");
+
+  await Promise.all([anon.close(), staff.close()]);
+});
+
+test("§22 the channel name is not the boundary: a customer on the staff topic still sees only their own", async () => {
+  // Guess the staff channel name AND send the staff store filter. RLS is
+  // evaluated per subscriber regardless, so this buys the customer
+  // nothing beyond the rows they already own.
+  const cust = await listen(customerJwt, {
+    topic: `store:${SEED_STORE}:orders`,
+    filter: `store_id=eq.${SEED_STORE}`,
+  });
+  const staff = await listen(packerJwt, { warm: true });
+  assert.equal(cust.status, "SUBSCRIBED");
+
+  const orderId = await makePackedOrder();
+  assert.ok(await waitFor(staff, (r) => r.includes(orderId)), "control: the packer received it");
+  await settle();
+
+  const seen = [...new Set(cust.received)];
+  const { data: owners } = await svc.from("orders").select("id, customer_id").in("id", seen);
+  const foreign = ((owners ?? []) as { id: string; customer_id: string }[]).filter((o) => o.customer_id !== CUSTOMER);
+  assert.deepEqual(foreign, [], "no row belonging to anybody else arrived");
+  assert.equal((owners ?? []).length, seen.length, "every id resolves to a row the customer owns");
+
+  await Promise.all([cust.close(), staff.close()]);
 });
 
 test("D20 is enforced in the client: no customer surface opens a Realtime channel", async () => {

@@ -3,8 +3,12 @@
 Closes the hole Phase 7 reported, then puts a live layer on top of the
 loop that now has no dead ends.
 
-Base: `feat/runner-delivery` = `29ebda3` (Phase 7, PR #12, still open).
-Branch: `feat/realtime-notifications`.
+Base: `main` = `1266345` (Phase 7 merged as PR #12).
+Branch: `feat/realtime-notifications`, PR #13.
+
+Originally built on `feat/runner-delivery` while Phase 7 was still open;
+retargeted and synchronized with `main` once #12 merged, and everything
+in §9-§12 was re-verified against that base rather than carried over.
 
 **Order of work was deliberate.** Part A (`mark_delivery_failed`) came
 first, exactly as Phase 7 §20.1 asked. Realtime and push are comfort;
@@ -172,8 +176,8 @@ New Edge Functions: `mark_delivery_failed`, `register_push_token`,
 
 | Suite | Before Phase 8 | After | Delta |
 |---|---|---|---|
-| pgTAP | 446 assertions, 15 files | **486, 16 files** | `15_delivery_failure_test.sql`, 40 assertions |
-| Integration | 137 | **162** | `phase8.integration.test.ts`, 25 tests |
+| pgTAP | 460 assertions, 15 files | **500, 16 files** | `15_delivery_failure_test.sql`, 40 assertions |
+| Integration | 137 | **164** | `phase8.integration.test.ts`, 27 tests |
 | Gateway (Deno) | 8 | 8 | — |
 | Unit | 44 | 44 | — |
 
@@ -198,53 +202,134 @@ Three fixes the new suite forced, all of them real:
   share one database, one seed inventory and one set of runners; running
   them in parallel was never sound.
 
+Two tests were added during the retarget, both from the checkpoint
+brief's §22:
+
+* an unauthenticated socket subscribes successfully and receives
+  **nothing**, while an authorized packer alongside it receives the same
+  change — so a silent Realtime service cannot make the assertion pass by
+  accident;
+* a customer who guesses the staff channel name *and* sends the staff
+  store filter still receives only rows they own. The channel name is
+  not the boundary; RLS is.
+
 ## 9. iOS validation — VERIFIED
 
-`Craavee_iPhone17`, iOS 26.5, dev client on Metro, real database and real
-Edge Functions.
+`Craavee_iPhone17`, iOS 26.5, dev client on Metro, against `main` after
+the merge, with the real database and real Edge Functions.
 
-* Signed in as runner `+919000001201`, queue rendered.
-* Claim → `Your delivery, Block P6 · Room 1` → **Picked up** → **Can't
-  deliver this** → reason "Customer not answering" → back to the queue.
-  `audit_logs` shows `order.delivery_failed` with that reason.
-* Realtime: `realtime.subscription` registered `claims_role=runner` with
-  the store filter. With a job claimed on device, releasing it from psql
-  moved the screen from "Your delivery" to "No live job" with no
-  interaction.
-* Push: the OS permission prompt appeared and was granted. **No token was
-  minted and none was registered** — expected, and reported as such: the
-  app has no EAS `projectId` and a simulator has no APNs. The hook
-  reports `unsupported`/`unconfigured` and the order flow is unaffected.
+**Customer surface (D20 polling).** Signed in as `+919990000011`, placed
+a real order through checkout, captured it with the mock webhook. The
+status screen moved `Payment pending → Order confirmed` on its own.
+Measured at the gateway, on the device:
+
+| App state | `GET /rest/v1/orders` | Interval |
+|---|---|---|
+| Foreground, status just changed | 13 in 90 s | ~8 s (`POLL_FAST_MS`) |
+| Foreground, idle > 2 min | 3 in 70 s | ~30 s (`POLL_SLOW_MS`) |
+| Backgrounded (HOME) | **0 in 40 s** | stopped |
+| Foregrounded again | resumed | back on the slow interval |
+
+`realtime.subscription` was inspected while the customer sat on the order
+screen: **one row, and it belonged to the Console admin in a browser.**
+The customer app holds no subscription. That is D20, measured.
+
+**Runner surface.** Signed in as `+919000001201`; two runner
+subscriptions registered with `claims_role=runner` and the store filter
+(one per mounted screen, distinct topics). Claim → Picked up → **Can't
+deliver this** → reason "Wrong block number". Result in the database:
+
+* `status = delivery_failed`, `runner_id` retained, `delivery_code_hash`
+  null and the `order_delivery_codes` row gone.
+* `audit_logs`: `order.delivery_failed`, role `runner`, reason recorded.
+* `payments`: still `captured`, `refunded_amount = 0`, zero `refunds`
+  rows — **no money moved**, which is what row #12 specifies.
+* `notification_outbox` for that order: `order.confirmed`,
+  `order.packed`, `order.assigned`, `order.picked_up`,
+  `order.delivery_failed` — five rows, each queued by the trigger, none
+  sent.
+
+**Realtime.** With a job claimed on the device, releasing it from psql
+moved the screen from "Your delivery" to "No live job" with no
+interaction.
+
+**Push.** The OS permission prompt appeared and was granted. **No token
+was minted and none was registered** — `push_tokens` has zero rows for
+either device profile. Expected: no EAS `projectId`, and a simulator has
+no APNs. The hook degrades to `unsupported`/`unconfigured` and the order
+flow is unaffected.
 
 ## 10. Android validation — VERIFIED
 
-`Craavee_Pixel7_API36`, API 36, via `adb reverse`.
+`Craavee_Pixel7_API36`, API 36, via `adb reverse`, app data cleared first.
 
-* Signed in as the same runner; queue rendered; no LogBox errors after
-  the §4.2 fix.
-* Claim → Picked up → Can't deliver this → reason "gate locked". Audit:
-  `order.delivery_failed`, reason `gate locked`.
-* Realtime: two runner subscriptions (one per mounted screen, distinct
-  topics). Claiming on device then releasing from psql moved the screen
+* Signed in as `+919000001202`; Android 13 `POST_NOTIFICATIONS` prompt
+  granted; queue rendered; no LogBox errors.
+* Two runner subscriptions with distinct topics (the §4.2 fix).
+* Claim → Picked up → Can't deliver this → reason "customer
+  unreachable". Database: `delivery_failed`, runner retained, code
+  destroyed, audit row with the reason.
+* Realtime: claiming on device then releasing from psql moved the screen
   to "No live job".
-* Push: Android 13 `POST_NOTIFICATIONS` prompt appeared and was granted;
-  no token minted, same reason as iOS.
+* Push: no token minted — same reason as iOS.
 
 ## 11. Web validation — VERIFIED
 
-Both apps against the local stack, signed in with real staff JWTs.
+Against `main`, both apps, real staff JWTs.
 
-* **Store, as packer** — subscription `claims_role=packer` with
-  `store_id` filter; packing an order from psql moved the queue 32 → 31
-  within ~2 s, no reload.
-* **Store, as admin** — `claims_role=admin`, no filter; queue 46 → 45.
-* **Console, as admin** — Placed 24 → 23 and Packed 86 → 87 within ~2 s;
-  the packed order left the Placed column.
+* **Store as packer** — `claims_role=packer` with the `store_id` filter;
+  packing an order from psql moved the queue 18 → 17 within ~2 s, no
+  reload.
+* **Console as admin** — `claims_role=admin`, no filter; Placed 31 → 30
+  and Packed 88 → 89 within ~2 s.
 
-Before the §4.1 fix the Console did not move at all. That is the whole
-value of doing this in a browser rather than reasoning about the code.
+**Reconnect and recovery (§10 of the checkpoint brief), demonstrated by
+stopping the Realtime container:**
 
-## 12. Known limitations
+1. Console connected, board correct.
+2. `docker stop supabase_realtime` → the page showed *"Live updates
+   disconnected — reconnecting. Refresh to see the latest."* and held its
+   now-stale rows rather than pretending.
+3. An order was packed **while disconnected**. That event can never be
+   delivered — it happened with nothing listening.
+4. `docker start` → the banner cleared and the board corrected itself:
+   Placed 30 → 29, Packed 89 → 90, the packed order gone.
+
+The client recovered by refetching on `SUBSCRIBED`, not by replaying a
+missed event. That is the whole design in one observation.
+
+## 12. Performance, cleanup and observability
+
+Measured on the local stack (probe order, service-role writes, five
+samples for the steady-state numbers):
+
+| Measurement | Result |
+|---|---|
+| `subscribe()` → `SUBSCRIBED` | 3–6 ms |
+| `SUBSCRIBED` → first event actually delivered | 99 ms (packer), 554 ms (runner) |
+| Steady-state update latency, packer | 232 ms median (225–504) |
+| Steady-state update latency, runner | 228 ms median (219–231) |
+| Forced disconnect → resubscribed and delivering | ~520 ms + 166 ms |
+| `register_push_token` round trip | 68 ms |
+
+**Subscription cleanup.** Unmounting one of two channels on a shared
+socket removes its `realtime.subscription` row within ~10 s; closing the
+last channel drains the rest. Verified to reach **0 rows** after every
+listener closed — no stale subscriptions, but the cleanup is not
+instantaneous and a row can outlive its channel by a few seconds.
+
+**Connection count.** One socket per signed-in client, one subscription
+per mounted staff screen. No Redis, no pooling layer, nothing added to
+the infrastructure.
+
+**Error capture.** All three new Edge Functions call the existing
+`_shared/sentry.ts` `captureException` with `fn`, `userId`, `orderId` and
+an error code — never a JWT, delivery code, or gateway secret. Note
+plainly: `SENTRY_DSN` is unset in this environment, so the shim emits its
+structured console line and posts nothing. **Sentry ingestion itself has
+never been exercised**, in this phase or any earlier one.
+
+## 13. Known limitations
 
 1. **No push has ever been delivered to a handset.** Token minting needs
    an EAS `projectId` and a physical device; APNs/FCM credentials do not
@@ -267,8 +352,15 @@ value of doing this in a browser rather than reasoning about the code.
    resubscribes rather than waiting longer, but the cause is not proven
    and it is recorded as unproven.
 5. **Razorpay still has no live sandbox run.** Unchanged from Phase 5.
+6. **Sentry has never ingested anything.** The shim is wired into all
+   three new functions, but `SENTRY_DSN` is unset here, so only the
+   structured console line was observed. Unchanged from Phase 4.
+7. **A real notification tap has never been exercised**, because no push
+   can be delivered. The deep-link route the tap handler navigates to
+   works (it is how on-device sign-in was reached), but the handler's own
+   path from a delivered notification is untested.
 
-## 13. Phase 9 starting point
+## 14. Phase 9 starting point
 
 The loop now has no dead ends and a live layer over it. What Phase 9
 inherits:
