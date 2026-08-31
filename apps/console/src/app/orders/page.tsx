@@ -1,104 +1,128 @@
-"use client";
+// Console live operations board (Phase 8, §21).
+//
+// Server component: the query runs as the signed-in admin through the
+// anon key, so `orders_select` (migration 0003) decides what is
+// returned. No store filter is written here — an admin has all-store
+// scope, and if this file were wrong RLS would still be the boundary.
+//
+// The board's visuals are untouched (OrdersBoard.tsx is the Phase 2B
+// markup verbatim). What changed is that the metrics and columns are now
+// derived from real rows rather than hardcoded constants, which is what
+// makes a live update meaningful at all.
+//
+// `requireAdmin` was added this phase because without it the Console had
+// no authenticated identity, so every authoritative query returned
+// nothing and there was no real state to broadcast.
+import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
-// Migrated from the retired src/app/(admin)/live-ops/page.tsx — same
-// content and visuals, moved to a real /orders route (Phase 2B §5: no
-// more bare-route-group URLs) and the shared OpsShell. Data is still
-// hardcoded placeholder content; real-time wiring is Phase 8/9 work
-// (ORDER_STATE_MACHINE.md, DECISION_LOG.md D21).
-import { motion } from "motion/react";
-import { Lightning, Clock, User, Warning } from "@phosphor-icons/react/ssr";
-import { OpsShell, cn } from "@craavee/ui";
-import { CONSOLE_NAV } from "@/lib/nav";
+import { OrdersBoard, type BoardColumn, type BoardMetric } from "./OrdersBoard";
 
-const metrics = [
-  { label: "Orders / hr", value: "42", change: "+12%", icon: Lightning, warning: false },
-  { label: "Avg fulfillment", value: "8m", change: "", icon: Clock, warning: false },
-  { label: "Active runners", value: "5", change: "", icon: User, warning: false },
-  { label: "Queue depth", value: "12", change: "Near capacity", icon: Warning, warning: true },
+export const dynamic = "force-dynamic";
+
+const COLUMNS: { id: string; title: string; status: string }[] = [
+  { id: "placed", title: "Placed", status: "confirmed" },
+  { id: "packed", title: "Packed", status: "packed" },
+  { id: "assigned", title: "Assigned", status: "assigned" },
+  { id: "picked-up", title: "Picked Up", status: "picked_up" },
+  { id: "delivered", title: "Delivered", status: "delivered" },
 ];
 
-const kanbanColumns = [
-  { id: "placed", title: "Placed", count: 3, orders: [{ id: "#1084", items: "2x Tomato, 1x Atta", time: "1m ago", priority: true }] },
-  { id: "packed", title: "Packed", count: 2, orders: [{ id: "#1081", items: "1x Milk, 1x Eggs", time: "6m ago", priority: false }] },
-  { id: "assigned", title: "Assigned", count: 1, orders: [{ id: "#1078", items: "3x Banana", time: "3m ago", priority: false }] },
-  { id: "picked-up", title: "Picked Up", count: 2, orders: [{ id: "#1075", items: "1x Frozen Pizza", time: "12m ago", priority: false }] },
-  { id: "delivered", title: "Delivered", count: 4, orders: [{ id: "#1070", items: "2x Sparkling Water", time: "25m ago", priority: false }] },
-];
+function ago(iso: string | null, now: number): string {
+  if (!iso) return "";
+  const mins = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.round(mins / 60)}h ago`;
+}
 
-export default function ConsoleOrdersPage() {
-  return (
-    <OpsShell brand="Craavee Console" navItems={CONSOLE_NAV} active="Orders" title="Live orders" subtitle="Real-time operations board">
-      <section className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {metrics.map((metric, index) => (
-          <motion.div
-            key={metric.label}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06, ease: [0.34, 1.56, 0.64, 1] }}
-            className={cn(
-              "clay-card p-4",
-              metric.warning && "!border-orange-400/30 !bg-gradient-to-br !from-orange-500/15 !to-transparent"
-            )}
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <span className="flex items-center gap-2 text-xs font-semibold text-white/50">
-                <metric.icon size={15} weight="bold" /> {metric.label}
-              </span>
-              {metric.change && (
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-extrabold",
-                    metric.warning ? "bg-orange-400/15 text-orange-300" : "bg-emerald-500/15 text-emerald-300"
-                  )}
-                >
-                  {metric.change}
-                </span>
-              )}
-            </div>
-            <div className="font-display text-3xl font-extrabold text-white">{metric.value}</div>
-          </motion.div>
-        ))}
-      </section>
+interface BoardData {
+  metrics: BoardMetric[];
+  kanbanColumns: BoardColumn[];
+}
 
-      <section className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
-        {kanbanColumns.map((column, index) => (
-          <motion.div
-            key={column.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className="flex w-72 shrink-0 flex-col gap-3"
-          >
-            <div className="flex items-center justify-between px-2 py-1">
-              <h3 className="text-xs font-extrabold uppercase tracking-wide text-white/45">{column.title}</h3>
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-extrabold text-white/70">{column.count}</span>
-            </div>
-            <div className="flex min-h-[380px] flex-1 flex-col gap-3 rounded-3xl bg-white/[0.04] p-3 ring-1 ring-inset ring-white/[0.07]">
-              {column.orders.map((order) => (
-                <div
-                  key={order.id}
-                  className={cn(
-                    "clay-card cursor-pointer rounded-2xl !rounded-2xl transition-[background-color,border-color,color,box-shadow,transform] hover:-translate-y-0.5",
-                    order.priority && "!border-l-4 !border-l-orange-400"
-                  )}
-                >
-                  <div className="mb-2 flex items-start justify-between">
-                    <span className="font-display text-sm font-extrabold text-sky-300">{order.id}</span>
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-white/40">
-                      <Clock size={11} weight="bold" /> {order.time}
-                    </span>
-                  </div>
-                  <p className="mb-3 line-clamp-2 text-xs font-medium text-white/70">{order.items}</p>
-                  <div className="flex items-center justify-between border-t border-dashed border-white/10 pt-2">
-                    <span className="text-[10px] font-semibold text-white/40">Awaiting runner</span>
-                    <button className="btn-clay cursor-pointer px-3 py-1 text-[10px] font-bold">Assign</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        ))}
-      </section>
-    </OpsShell>
-  );
+/** Kept out of the component body deliberately: `Date.now()` is impure and
+ *  must not run during render (react-hooks/purity). It is read once here
+ *  and threaded through, which also means every relative time on one
+ *  render is measured from the same instant. */
+async function loadBoard(): Promise<BoardData> {
+  const now = Date.now();
+  const supabase = await createClient();
+
+  const since = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("orders")
+    .select("id, status, placed_at, delivered_at, order_items(qty)")
+    .gte("placed_at", since)
+    .order("placed_at", { ascending: false })
+    .limit(200);
+
+  const orders = (data ?? []) as {
+    id: string;
+    status: string;
+    placed_at: string | null;
+    delivered_at: string | null;
+    order_items: { qty: number }[] | null;
+  }[];
+
+  const kanbanColumns: BoardColumn[] = COLUMNS.map((c) => {
+    const rows = orders.filter((o) => o.status === c.status);
+    return {
+      id: c.id,
+      title: c.title,
+      count: rows.length,
+      orders: rows.slice(0, 6).map((o) => ({
+        id: `#${o.id.slice(0, 8)}`,
+        items: `${(o.order_items ?? []).reduce((n, i) => n + i.qty, 0)} items`,
+        time: ago(o.placed_at, now),
+        // A confirmed order still waiting after 10 minutes is the one an
+        // operator should look at first.
+        priority:
+          c.status === "confirmed" &&
+          !!o.placed_at &&
+          now - new Date(o.placed_at).getTime() > 10 * 60 * 1000,
+      })),
+    };
+  });
+
+  const lastHour = orders.filter(
+    (o) => o.placed_at && now - new Date(o.placed_at).getTime() < 60 * 60 * 1000,
+  ).length;
+
+  const delivered = orders.filter((o) => o.delivered_at && o.placed_at);
+  const avgMins = delivered.length
+    ? Math.round(
+        delivered.reduce(
+          (n, o) => n + (new Date(o.delivered_at!).getTime() - new Date(o.placed_at!).getTime()) / 60000,
+          0,
+        ) / delivered.length,
+      )
+    : 0;
+
+  const { count: activeRunners } = await supabase
+    .from("runners")
+    .select("id", { count: "exact", head: true })
+    .eq("is_online", true);
+
+  const queueDepth = orders.filter((o) => ["confirmed", "packed"].includes(o.status)).length;
+
+  const metrics: BoardMetric[] = [
+    { label: "Orders / hr", value: String(lastHour), change: "", warning: false },
+    { label: "Avg fulfillment", value: delivered.length ? `${avgMins}m` : "\u2014", change: "", warning: false },
+    { label: "Active runners", value: String(activeRunners ?? 0), change: "", warning: false },
+    {
+      label: "Queue depth",
+      value: String(queueDepth),
+      change: queueDepth >= 10 ? "Near capacity" : "",
+      warning: queueDepth >= 10,
+    },
+  ];
+
+  return { metrics, kanbanColumns };
+}
+
+export default async function ConsoleOrdersPage() {
+  await requireAdmin();
+  const { metrics, kanbanColumns } = await loadBoard();
+  return <OrdersBoard metrics={metrics} kanbanColumns={kanbanColumns} />;
 }

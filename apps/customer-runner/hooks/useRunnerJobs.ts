@@ -151,6 +151,15 @@ export function useReleaseJob() {
   );
 }
 
+/** Phase 8: the exit a runner previously did not have. `picked_up` goes
+ *  only to `delivered` or `delivery_failed`, so a runner holding a bag
+ *  they cannot hand over had no way out at all. */
+export function useMarkDeliveryFailed() {
+  return useRunnerMutation<{ orderId: string; reason: string }>((v) =>
+    invoke("mark_delivery_failed", { orderId: v.orderId, reason: v.reason }),
+  );
+}
+
 export function useVerifyDeliveryCode() {
   return useRunnerMutation<{ orderId: string; code: string }>((v) =>
     invoke("verify_delivery_code", { orderId: v.orderId, code: v.code }),

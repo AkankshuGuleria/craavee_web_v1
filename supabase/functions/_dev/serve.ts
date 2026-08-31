@@ -25,6 +25,9 @@ import { handleMarkPickedUp } from "../mark_picked_up/handler.ts";
 import { handleReleaseJob } from "../release_job/handler.ts";
 import { handleVerifyDeliveryCode } from "../verify_delivery_code/handler.ts";
 import { handleAdminReassign } from "../admin_reassign/handler.ts";
+import { handleMarkDeliveryFailed } from "../mark_delivery_failed/handler.ts";
+import { handleRegisterPushToken } from "../register_push_token/handler.ts";
+import { handleDispatchNotifications } from "../dispatch_notifications/handler.ts";
 
 const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   create_order: handleCreateOrder,
@@ -39,6 +42,9 @@ const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   release_job: handleReleaseJob,
   verify_delivery_code: handleVerifyDeliveryCode,
   admin_reassign: handleAdminReassign,
+  mark_delivery_failed: handleMarkDeliveryFailed,
+  register_push_token: handleRegisterPushToken,
+  dispatch_notifications: handleDispatchNotifications,
 };
 
 const PORT = Number(Deno.env.get("FUNCTIONS_PORT") ?? "8790");

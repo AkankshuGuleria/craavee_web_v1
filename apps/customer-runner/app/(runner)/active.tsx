@@ -2,7 +2,8 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
-import { useActiveJob, useMarkPickedUp, useReleaseJob, useVerifyDeliveryCode } from "../../hooks/useRunnerJobs";
+import { useActiveJob, useMarkDeliveryFailed, useMarkPickedUp, useReleaseJob, useVerifyDeliveryCode } from "../../hooks/useRunnerJobs";
+import { useRunnerRealtime, useRunnerStore } from "../../hooks/useRunnerRealtime";
 import { toRunnerUiError } from "../../lib/runner/errors";
 
 /**
@@ -23,9 +24,16 @@ export default function ActiveJobScreen() {
   const pickup = useMarkPickedUp();
   const release = useReleaseJob();
   const verify = useVerifyDeliveryCode();
+  const failed = useMarkDeliveryFailed();
+  // Reassignment or an admin release while the runner is mid-job must
+  // show up here without a manual refresh (§20).
+  const storeId = useRunnerStore();
+  useRunnerRealtime(storeId);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [showFail, setShowFail] = useState(false);
+  const [reason, setReason] = useState("");
 
   if (active.isLoading) {
     return (
@@ -151,6 +159,56 @@ export default function ActiveJobScreen() {
               {verify.isPending ? "Checking…" : "Confirm delivery"}
             </Text>
           </Pressable>
+
+          {/* Phase 8: the exit that did not exist. After pickup the only
+              legal moves are `delivered` and `delivery_failed` — release
+              cannot reach `packed` from here — so without this a runner
+              holding an undeliverable bag was stuck. An admin decides
+              afterwards whether to reassign or cancel; reporting a
+              failure refunds nothing by itself (#12). */}
+          {!showFail ? (
+            <Pressable
+              accessibilityRole="button"
+              className="items-center rounded-2xl border border-inkdeep/20 py-5"
+              onPress={() => setShowFail(true)}
+            >
+              <Text className="text-lg font-semibold text-inkdeep">Can&apos;t deliver this</Text>
+            </Pressable>
+          ) : (
+            <View className="gap-3 rounded-2xl border border-inkdeep/15 p-4">
+              <Text className="text-base font-semibold text-inkdeep">What happened?</Text>
+              <TextInput
+                className="rounded-xl border border-inkdeep/15 bg-white px-4 py-4 text-base text-inkdeep"
+                placeholder="e.g. customer not answering"
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                accessibilityLabel="Reason delivery failed"
+              />
+              <Pressable
+                accessibilityRole="button"
+                disabled={reason.trim().length === 0 || failed.isPending}
+                className={`items-center rounded-2xl py-5 ${reason.trim().length === 0 || failed.isPending ? "bg-danger/40" : "bg-danger"}`}
+                onPress={() =>
+                  run(
+                    () => failed.mutateAsync({ orderId: job.id, reason: reason.trim() }),
+                    () => {
+                      setShowFail(false);
+                      setReason("");
+                      router.replace("/(runner)");
+                    },
+                  )
+                }
+              >
+                <Text className="text-lg font-semibold text-white">
+                  {failed.isPending ? "Reporting…" : "Report delivery failed"}
+                </Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => setShowFail(false)}>
+                <Text className="text-center text-base text-inkdeep/60">Cancel</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       )}
     </ScrollView>

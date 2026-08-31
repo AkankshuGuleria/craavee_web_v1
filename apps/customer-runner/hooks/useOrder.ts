@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "../lib/supabase";
@@ -14,14 +16,43 @@ import { supabase } from "../lib/supabase";
  * anything the client computed, and never anything a client-side payment
  * callback claimed (Phase 5 §17 — the webhook is the source of truth).
  *
- * Polling (D20 — polling, never Realtime for customers) is BOUNDED
- * (Phase 5 §18): while the order is still `created` (awaiting the
- * webhook) it re-reads every 5s, but stops after ~2 minutes so a stuck
- * order does not poll forever. It also stops immediately once the order
- * reaches any non-`created` state (confirmed / payment_failed /
- * cancelled).
+ * Polling (D20 — polling, never Realtime for customers). Phase 8
+ * completes D20's schedule; Phase 5 only implemented the narrow
+ * payment-confirmation window (5s while `created`).
+ *
+ * D20, in full:
+ *   * 8s while the app is foregrounded and the order is non-terminal
+ *   * backing off to 30s after 2 minutes with no state change
+ *   * stopped entirely when backgrounded, resuming on foreground
+ *
+ * This is not a UX preference. It is the stated mitigation for the
+ * dossier's launch-day failure #4 — socket fan-out at 800 concurrent
+ * customers — which is why a customer never opens a Realtime channel no
+ * matter how much nicer that would look next to the staff surfaces.
+ *
+ * The tracking screen also refetches immediately after any mutation
+ * (the mutation hooks invalidate `["orders", id]`), so the poll interval
+ * bounds how stale a *passively* watched screen can be, never how long
+ * an action takes to reflect.
  */
-const MAX_POLLS = 24; // ~2 minutes at 5s
+const POLL_FAST_MS = 8_000;
+const POLL_SLOW_MS = 30_000;
+const BACKOFF_AFTER_MS = 120_000;
+
+/** Terminal states stop polling: nothing further will change. */
+const TERMINAL = new Set(["delivered", "cancelled", "payment_failed"]);
+
+/** True while the app is foregrounded. D20 stops polling entirely when
+ *  backgrounded — a screen nobody is looking at should not spend the
+ *  customer's battery or our request budget. */
+function useAppActive(): boolean {
+  const [active, setActive] = useState(AppState.currentState === "active");
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (s) => setActive(s === "active"));
+    return () => sub.remove();
+  }, []);
+  return active;
+}
 
 export type PaymentUiState =
   | "pending"
@@ -45,13 +76,34 @@ export interface OrderDetail {
 }
 
 export function useOrder(orderId: string | undefined) {
+  const appActive = useAppActive();
+  // When the status last actually changed — not when we last polled.
+  // Backing off on "time since the last request" would never back off at
+  // all, since every poll resets it.
+  // `at` is stamped on the first interval evaluation rather than here:
+  // Date.now() during render is impure, and react-hooks/purity rejects it.
+  const lastChange = useRef<{ status: string | null; at: number | null }>({ status: null, at: null });
+
   return useQuery({
     queryKey: ["orders", orderId],
     enabled: !!orderId,
+    // Resume promptly when the customer comes back to the app rather
+    // than waiting out a full interval.
+    refetchOnWindowFocus: true,
     refetchInterval: (q) => {
-      const s = (q.state.data as OrderDetail | undefined)?.status;
-      if (s && s !== "created") return false;
-      return q.state.dataUpdateCount > MAX_POLLS ? false : 5000;
+      const status = (q.state.data as OrderDetail | undefined)?.status ?? null;
+
+      if (lastChange.current.at === null || status !== lastChange.current.status) {
+        lastChange.current = { status, at: Date.now() };
+      }
+
+      // D20: stopped entirely when backgrounded.
+      if (!appActive) return false;
+      // Nothing further will happen to a terminal order.
+      if (status && TERMINAL.has(status)) return false;
+
+      const idleFor = Date.now() - (lastChange.current.at ?? Date.now());
+      return idleFor > BACKOFF_AFTER_MS ? POLL_SLOW_MS : POLL_FAST_MS;
     },
     queryFn: async (): Promise<OrderDetail> => {
       const { data: order, error } = await supabase

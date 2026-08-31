@@ -171,6 +171,10 @@ before(async () => {
   );
   await waitForServer(`${FN_BASE}/claim_job`);
 
+  // A run that died part-way can leave a runner holding a live job; every
+  // claim here would then fail with RUNNER_ALREADY_ASSIGNED.
+  await parkLiveJobs();
+
   runnerAJwt = (await signIn("+919000001201")).jwt;
   runnerBJwt = (await signIn("+919000001202")).jwt;
   offlineJwt = (await signIn("+919000001203")).jwt;
@@ -202,12 +206,26 @@ before(async () => {
   );
 });
 
+/** Return this suite's runners to "free" by taking any live job out
+ *  through a LEGAL edge. enforce_order_transition() rejects
+ *  `picked_up -> packed` even for the service role, so a naive reset is a
+ *  silent no-op and the stale job poisons the next run. */
+async function parkLiveJobs() {
+  const { data } = await svc
+    .from("orders").select("id, status")
+    .in("runner_id", [RUNNER_A, RUNNER_B])
+    .in("status", ["assigned", "picked_up"]);
+  for (const o of (data ?? []) as { id: string; status: string }[]) {
+    const to = o.status === "assigned" ? "packed" : "delivery_failed";
+    const { error } = await svc.from("orders").update({ status: to }).eq("id", o.id);
+    if (error) throw new Error(`could not park stale job ${o.id} (${o.status} -> ${to}): ${JSON.stringify(error)}`);
+    await svc.from("order_delivery_codes").delete().eq("order_id", o.id);
+  }
+}
+
 after(async () => {
   // Leave no live assignment behind for a re-run or a parallel suite.
-  const { data } = await svc.from("orders").select("id").in("runner_id", [RUNNER_A, RUNNER_B]).in("status", ["assigned", "picked_up"]);
-  for (const o of (data ?? []) as { id: string }[]) {
-    await svc.from("orders").update({ status: "packed", runner_id: null, assigned_at: null }).eq("id", o.id);
-  }
+  await parkLiveJobs();
   serverProc?.kill("SIGTERM");
 });
 

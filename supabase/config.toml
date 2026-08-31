@@ -510,6 +510,18 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.mark_delivery_failed]
+enabled = true
+verify_jwt = false
+
+[functions.register_push_token]
+enabled = true
+verify_jwt = false
+
+[functions.dispatch_notifications]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

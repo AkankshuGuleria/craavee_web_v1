@@ -104,3 +104,21 @@ export const adminReassignSchema = z.object({
   runnerId: uuid.optional(),
 });
 export type AdminReassignBody = z.infer<typeof adminReassignSchema>;
+
+// mark_delivery_failed (Phase 8). `reason` is required — a delivery
+// failure that nobody can explain is not actionable by the admin who has
+// to decide between reassignment and cancellation.
+export const markDeliveryFailedSchema = z.object({
+  orderId: uuid,
+  reason: z.string().min(1).max(500),
+});
+export type MarkDeliveryFailedBody = z.infer<typeof markDeliveryFailedSchema>;
+
+// register_push_token (Phase 8 §14). No profileId field exists, and that
+// is deliberate: the owner is the caller the JWT verified, so a client
+// cannot register a token against somebody else's account.
+export const registerPushTokenSchema = z.object({
+  token: z.string().min(1).max(255),
+  platform: z.enum(["ios", "android", "web"]),
+});
+export type RegisterPushTokenBody = z.infer<typeof registerPushTokenSchema>;
