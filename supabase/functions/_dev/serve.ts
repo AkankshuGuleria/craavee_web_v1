@@ -20,6 +20,11 @@ import { handlePaymentWebhook } from "../payment_webhook/handler.ts";
 import { handleRefund } from "../refund/handler.ts";
 import { handleMarkPacked } from "../mark_packed/handler.ts";
 import { handleMarkStockOut } from "../mark_stock_out/handler.ts";
+import { handleClaimJob } from "../claim_job/handler.ts";
+import { handleMarkPickedUp } from "../mark_picked_up/handler.ts";
+import { handleReleaseJob } from "../release_job/handler.ts";
+import { handleVerifyDeliveryCode } from "../verify_delivery_code/handler.ts";
+import { handleAdminReassign } from "../admin_reassign/handler.ts";
 
 const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   create_order: handleCreateOrder,
@@ -29,6 +34,11 @@ const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   refund: handleRefund,
   mark_packed: handleMarkPacked,
   mark_stock_out: handleMarkStockOut,
+  claim_job: handleClaimJob,
+  mark_picked_up: handleMarkPickedUp,
+  release_job: handleReleaseJob,
+  verify_delivery_code: handleVerifyDeliveryCode,
+  admin_reassign: handleAdminReassign,
 };
 
 const PORT = Number(Deno.env.get("FUNCTIONS_PORT") ?? "8790");
