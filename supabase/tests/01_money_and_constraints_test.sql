@@ -12,7 +12,7 @@ select plan(24);
 
 -- ---- fixtures ----
 insert into auth.users (id, phone) values
-  ('c0000000-0000-0000-0000-000000000001', '9890000001');
+  ('c0000000-0000-0000-0000-000000000001', '919890000001');
 insert into stores (id, name) values ('50000000-0000-0000-0000-000000000001', 'Test Store');
 insert into zones (id, store_id, name, delivery_fee)
   values ('20000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'Zone A', 1000);

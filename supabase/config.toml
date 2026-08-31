@@ -270,36 +270,36 @@ max_frequency = "5s"
 # referenced by TEST_STRATEGY.md §3's k6 auth scenario note, which flags
 # that k6 cannot receive real SMS and needs exactly this kind of bypass).
 [auth.sms.test_otp]
-9990000001 = "123456"
-9990000002 = "123456"
-9990000003 = "123456"
+919990000001 = "123456"
+919990000002 = "123456"
+919990000003 = "123456"
 # Phase 4 — the order integration suite needs its own throwaway customers
 # (and one it promotes to `runner`) so it never mutates the wallet/state
-# of 9990000001-03, which the Phase 3 auth suite asserts against.
-9990000004 = "123456"
-9990000005 = "123456"
-9990000006 = "123456"
-9990000009 = "123456"
+# of 919990000001-03, which the Phase 3 auth suite asserts against.
+919990000004 = "123456"
+919990000005 = "123456"
+919990000006 = "123456"
+919990000009 = "123456"
 # Phase 5 payment-integration-suite customers (dedicated — see seed.sql).
-9990000007 = "123456"
-9990000008 = "123456"
+919990000007 = "123456"
+919990000008 = "123456"
 # Seeded staff, so a Phase 4 test can prove a non-customer role is
 # rejected by create_order (§26 L). Their staff_roles rows exist from
 # seed time — no runtime promotion race.
-9000001101 = "123456"
-9000001301 = "123456"
+919000001101 = "123456"
+919000001301 = "123456"
 # Phase 6 store-fulfilment suite: its own throwaway customer, so the
-# stock-out refunds it triggers never touch the wallet of 9990000001-03,
+# stock-out refunds it triggers never touch the wallet of 919990000001-03,
 # which the Phase 3 auth suite asserts is exactly 0.
-9990000010 = "123456"
+919990000010 = "123456"
 # Phase 6 store-fulfilment suite: a packer scoped to the seed store and a
 # second packer scoped to a different store, so the cross-store rejection
 # is proved with a real JWT rather than a service-role fake. Seeded (not
 # promoted at runtime) because the role/store_id claims are minted by
 # custom_access_token_hook at sign-in — a later promotion would leave the
 # already-issued JWT stale.
-9000001102 = "123456"
-9000001103 = "123456"
+919000001102 = "123456"
+919000001103 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]

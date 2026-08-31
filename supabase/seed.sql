@@ -60,22 +60,22 @@ insert into campaigns (id, name, type, starts_at, ends_at, config) values
 -- issue above.
 insert into auth.users (id, phone, aud, role, instance_id, confirmation_token, recovery_token, email_change_token_new, email_change, created_at, updated_at) values
   -- customers
-  ('00000000-0000-4000-8000-000000001001', '9000000001', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001002', '9000000002', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001003', '9000000003', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001004', '9000000004', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001001', '919000000001', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001002', '919000000002', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001003', '919000000003', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001004', '919000000004', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- packer
-  ('00000000-0000-4000-8000-000000001101', '9000001101', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001101', '919000001101', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- runners
-  ('00000000-0000-4000-8000-000000001201', '9000001201', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001202', '9000001202', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001203', '9000001203', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001201', '919000001201', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001202', '919000001202', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001203', '919000001203', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- admin
-  ('00000000-0000-4000-8000-000000001301', '9000001301', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001301', '919000001301', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- Phase 6 fulfilment-suite packers: 1102 in the seed store, 1103 in the
   -- fixture store above (the cross-store rejection case)
-  ('00000000-0000-4000-8000-000000001102', '9000001102', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001103', '9000001103', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
+  ('00000000-0000-4000-8000-000000001102', '919000001102', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001103', '919000001103', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
 
 update profiles set full_name = 'Aarav Sharma', acquisition_campaign_id = '00000000-0000-4000-8000-000000000201',
   referral_code = 'AARAV01' where id = '00000000-0000-4000-8000-000000001001';
@@ -104,7 +104,7 @@ update profiles set wallet_balance = 15000 where id in ('00000000-0000-4000-8000
 --     phone (confirmed empirically: `verifyOtp` for a test phone with no
 --     matching user returns "User not found"/`otp_expired`, not a
 --     fresh-signup path) — so these rows are what makes
---     `9990000001`/`02`/`03` + code `123456` actually usable for local
+--     `919990000001`/`02`/`03` + code `123456` actually usable for local
 --     dev/CI/load-testing, not just configured-but-dangling. Deliberately
 --     left undecorated (no `full_name`, no address, no wallet credit)
 --     past what `handle_new_user` itself sets — these exist to exercise
@@ -112,25 +112,25 @@ update profiles set wallet_balance = 15000 where id in ('00000000-0000-4000-8000
 --     (Phase 3 §9), not to be a third copy of the demo customers above.
 -- ---------------------------------------------------------------
 insert into auth.users (id, phone, aud, role, instance_id, confirmation_token, recovery_token, email_change_token_new, email_change, created_at, updated_at) values
-  ('00000000-0000-4000-8000-000000001901', '9990000001', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001902', '9990000002', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001903', '9990000003', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001901', '919990000001', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001902', '919990000002', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001903', '919990000003', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- Phase 4 order-integration-suite customers (config.toml [auth.sms.test_otp]).
   -- Kept separate from 1901-1903 so the Phase 4 suite's wallet/order
   -- mutations never break the Phase 3 auth suite's assertions.
-  ('00000000-0000-4000-8000-000000001904', '9990000004', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001905', '9990000005', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001906', '9990000006', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001909', '9990000009', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001904', '919990000004', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001905', '919990000005', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001906', '919990000006', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001909', '919990000009', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- Phase 5 payment-integration-suite customers — dedicated so the Phase
   -- 5 webhook/refund wallet mutations never race the Phase 4 order suite
   -- (both can run concurrently under `node --test`).
-  ('00000000-0000-4000-8000-000000001907', '9990000007', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
-  ('00000000-0000-4000-8000-000000001908', '9990000008', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001907', '919990000007', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
+  ('00000000-0000-4000-8000-000000001908', '919990000008', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now()),
   -- Phase 6 store-fulfilment suite's own customer. Seeded like the rest:
   -- the local stack has no SMS provider, so signInWithOtp cannot create a
   -- user and a test_otp phone only verifies if its auth.users row exists.
-  ('00000000-0000-4000-8000-000000001910', '9990000010', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
+  ('00000000-0000-4000-8000-000000001910', '919990000010', 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000', '', '', '', '', now(), now());
 
 -- A matching `auth.identities` row (provider='phone') is also required —
 -- a real signup writes one, and GoTrue's own account-linking expects it

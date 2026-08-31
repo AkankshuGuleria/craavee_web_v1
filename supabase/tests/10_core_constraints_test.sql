@@ -10,9 +10,9 @@ insert into stores (id, name) values ('aaaaaaaa-0000-4000-8000-000000000001', 'T
 insert into zones (id, store_id, name, delivery_fee)
   values ('aaaaaaaa-0000-4000-8000-000000000101', 'aaaaaaaa-0000-4000-8000-000000000001', 'Zone A', 1000);
 insert into auth.users (id, phone) values
-  ('aaaaaaaa-0000-4000-8000-000000001001', '9990000101'),
-  ('aaaaaaaa-0000-4000-8000-000000005001', '9990000501'),
-  ('aaaaaaaa-0000-4000-8000-000000005002', '9990000502');
+  ('aaaaaaaa-0000-4000-8000-000000001001', '919990000101'),
+  ('aaaaaaaa-0000-4000-8000-000000005001', '919990000501'),
+  ('aaaaaaaa-0000-4000-8000-000000005002', '919990000502');
 insert into addresses (id, customer_id, zone_id, block, room) values
   ('aaaaaaaa-0000-4000-8000-000000002001', 'aaaaaaaa-0000-4000-8000-000000001001', 'aaaaaaaa-0000-4000-8000-000000000101', 'Block A', '101');
 insert into products (id, store_id, name, mrp, sale_price, category) values

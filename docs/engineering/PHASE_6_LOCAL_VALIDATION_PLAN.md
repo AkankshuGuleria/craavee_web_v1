@@ -160,12 +160,49 @@ State plainly what was **not** tried. The Razorpay gap is the standing
 example of why: "implemented and unit-tested" was never allowed to drift
 into "verified", and device testing deserves the same discipline.
 
-## 9. Known limits at the time of writing
+## 9. Environment status
 
-- Xcode and Android Studio are **not installed**; nothing in §3 can run
-  until `LOCAL_DEVELOPMENT_ENVIRONMENT.md` §18 is done.
-- 23 GiB free internally — reclamation comes first.
-- 16 GB RAM — one native platform at a time.
+Set up and verified 2026-08-30 — see
+`NATIVE_DEV_ENVIRONMENT_SETUP_REPORT.md` for the full record.
+
+| | Status |
+| --- | --- |
+| Android SDK 36, emulator, `Craavee_Pixel7_API36` AVD | **installed and booted** (Android 16, arm64-v8a) |
+| JDK 17 for Gradle | **installed** (keg-only; does not disturb JDK 25) |
+| Xcode 26.6 + iOS 26.5 simulator runtime | **installed** |
+| Metro dev server | **works** — the historical hang was not reproducible |
+
+Run `bash scripts/check-native-dev-env.sh` at any time for a read-only
+snapshot.
+
+## 10. Three blockers before `expo run:*` will succeed
+
+The environment is ready; **the project is not yet**. Three pre-existing
+issues were found by trying to bundle, and none of them is an environment
+fault. They are listed in
+`NATIVE_DEV_ENVIRONMENT_SETUP_REPORT.md` §"Blocked" with evidence.
+
+1. **`metro.config.js` has no monorepo configuration.** `react-native` is
+   hoisted to the workspace root while `nativewind` and
+   `react-native-css-interop` are nested under
+   `apps/customer-runner/node_modules`, so Metro cannot resolve the
+   NativeWind runtime that its own Babel preset injects into hoisted
+   React Native files. Bundling fails with `UnableToResolveError`.
+2. **`app.json` has no `ios.bundleIdentifier` and no `android.package`.**
+   Both are required before a native project can be generated.
+3. **Duplicate `react` / `react-dom`** (19.2.3 in the app, 19.2.8 at the
+   root), which `expo-doctor` flags as unsafe for a native build, plus an
+   `expo-crypto` major-version mismatch.
+
+Fixing these is product work, deliberately **not** done as part of an
+environment task. Until they are fixed, device validation is blocked and
+should be reported as blocked rather than skipped.
+
+## 11. Standing caveats
+
+- 16 GB RAM: run **one** native platform at a time, and stop the Docker
+  Supabase stack when testing on a device.
+- The T7 is exFAT with 128 KB blocks; native caches stay on internal APFS.
 - Razorpay still has no live sandbox transaction. A device test will
   exercise Checkout **against the mock adapter** unless real `rzp_test_`
   keys are configured; that distinction must not be blurred in any report.

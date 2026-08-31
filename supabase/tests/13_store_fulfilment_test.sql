@@ -26,11 +26,11 @@ insert into zones (id, store_id, name, delivery_fee, is_serviceable) values
   ('c6000000-0000-4000-8000-000000000102', 'c6000000-0000-4000-8000-000000000002', 'Zone B', 1000, true);
 
 insert into auth.users (id, phone) values
-  ('c6000000-0000-4000-8000-000000001001', '9961000001'),  -- customer
-  ('c6000000-0000-4000-8000-000000001002', '9961000002'),  -- packer store A
-  ('c6000000-0000-4000-8000-000000001003', '9961000003'),  -- packer store B
-  ('c6000000-0000-4000-8000-000000001004', '9961000004'),  -- admin
-  ('c6000000-0000-4000-8000-000000001005', '9961000005');  -- runner store A
+  ('c6000000-0000-4000-8000-000000001001', '919961000001'),  -- customer
+  ('c6000000-0000-4000-8000-000000001002', '919961000002'),  -- packer store A
+  ('c6000000-0000-4000-8000-000000001003', '919961000003'),  -- packer store B
+  ('c6000000-0000-4000-8000-000000001004', '919961000004'),  -- admin
+  ('c6000000-0000-4000-8000-000000001005', '919961000005');  -- runner store A
 
 insert into staff_roles (profile_id, role, store_id) values
   ('c6000000-0000-4000-8000-000000001002', 'packer', 'c6000000-0000-4000-8000-000000000001'),
@@ -52,7 +52,7 @@ insert into inventory (store_id, product_id, qty_on_hand, qty_reserved) values
 -- Order 1: confirmed, 2x Prod A (5000) + 1x Prod B (3000) = 13000
 --          + delivery 1000, fully gateway-funded (payable 14000).
 insert into profiles (id, phone, wallet_balance) values
-  ('c6000000-0000-4000-8000-000000001001', '9961000001', 0)
+  ('c6000000-0000-4000-8000-000000001001', '919961000001', 0)
 on conflict (id) do update set wallet_balance = 0;
 
 insert into orders (id, customer_id, store_id, address_id, status, subtotal, delivery_fee,
