@@ -202,6 +202,86 @@ export type Database = {
           },
         ]
       }
+      notification_outbox: {
+        Row: {
+          attempts: number
+          body: string
+          created_at: string
+          event: string
+          id: string
+          last_error: string | null
+          order_id: string
+          profile_id: string
+          sent_at: string | null
+          title: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          created_at?: string
+          event: string
+          id?: string
+          last_error?: string | null
+          order_id: string
+          profile_id: string
+          sent_at?: string | null
+          title: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          created_at?: string
+          event?: string
+          id?: string
+          last_error?: string | null
+          order_id?: string
+          profile_id?: string
+          sent_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_outbox_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_delivery_codes: {
+        Row: {
+          code: string
+          created_at: string
+          order_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          order_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_delivery_codes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -661,6 +741,41 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          platform: string
+          profile_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          profile_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          profile_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1137,9 +1252,28 @@ export type Database = {
         Args: { p_actor_id: string; p_store_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      assert_runner_actor: {
+        Args: { p_actor_id: string; p_store_id: string }
+        Returns: {
+          role: Database["public"]["Enums"]["user_role"]
+          runner_id: string
+        }[]
+      }
       auth_role: { Args: never; Returns: string }
       auth_runner_id: { Args: never; Returns: string }
       auth_store_id: { Args: never; Returns: string }
+      claim_notification_batch: {
+        Args: { p_limit?: number }
+        Returns: {
+          body: string
+          event: string
+          order_id: string
+          outbox_id: string
+          platform: string
+          title: string
+          token: string
+        }[]
+      }
       claim_payment_intent: { Args: { p_order_id: string }; Returns: Json }
       create_order_phase_a: {
         Args: {
@@ -1154,6 +1288,7 @@ export type Database = {
         Returns: Json
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      delete_push_token: { Args: { p_token: string }; Returns: undefined }
       expire_stale_reservations: { Args: never; Returns: number }
       find_wallet_balance_mismatches: {
         Args: never
@@ -1163,11 +1298,31 @@ export type Database = {
           ledger_sum: number
         }[]
       }
+      mark_notification_sent: {
+        Args: { p_error?: string; p_outbox_id: string }
+        Returns: undefined
+      }
       persist_gateway_ref: {
         Args: { p_gateway_order_ref: string; p_order_id: string }
         Returns: undefined
       }
+      process_admin_reassign: {
+        Args: { p_actor_id: string; p_order_id: string; p_runner_id?: string }
+        Returns: Json
+      }
+      process_claim_job: {
+        Args: { p_actor_id: string; p_order_id: string }
+        Returns: Json
+      }
+      process_mark_delivery_failed: {
+        Args: { p_actor_id: string; p_order_id: string; p_reason: string }
+        Returns: Json
+      }
       process_mark_packed: {
+        Args: { p_actor_id: string; p_order_id: string }
+        Returns: Json
+      }
+      process_mark_picked_up: {
         Args: { p_actor_id: string; p_order_id: string }
         Returns: Json
       }
@@ -1195,6 +1350,14 @@ export type Database = {
         }
         Returns: Json
       }
+      process_register_push_token: {
+        Args: { p_platform: string; p_profile_id: string; p_token: string }
+        Returns: Json
+      }
+      process_release_job: {
+        Args: { p_actor_id: string; p_order_id: string; p_reason?: string }
+        Returns: Json
+      }
       process_stock_out: {
         Args: {
           p_actor_id: string
@@ -1204,6 +1367,10 @@ export type Database = {
           p_order_id: string
           p_order_item_id: string
         }
+        Returns: Json
+      }
+      process_verify_delivery_code: {
+        Args: { p_actor_id: string; p_code: string; p_order_id: string }
         Returns: Json
       }
       promo_order_discount: {

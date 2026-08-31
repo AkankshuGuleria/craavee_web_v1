@@ -113,3 +113,12 @@ export const markDeliveryFailedSchema = z.object({
   reason: z.string().min(1).max(500),
 });
 export type MarkDeliveryFailedBody = z.infer<typeof markDeliveryFailedSchema>;
+
+// register_push_token (Phase 8 §14). No profileId field exists, and that
+// is deliberate: the owner is the caller the JWT verified, so a client
+// cannot register a token against somebody else's account.
+export const registerPushTokenSchema = z.object({
+  token: z.string().min(1).max(255),
+  platform: z.enum(["ios", "android", "web"]),
+});
+export type RegisterPushTokenBody = z.infer<typeof registerPushTokenSchema>;
