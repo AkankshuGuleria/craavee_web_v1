@@ -26,7 +26,7 @@
  * against the local stack: a store-A change delivered 0 events to a
  * runner at another store.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "../lib/supabase";
@@ -36,6 +36,15 @@ export type RealtimeStatus = "connecting" | "live" | "offline";
 export function useRunnerRealtime(storeId: string | null): RealtimeStatus {
   const qc = useQueryClient();
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
+  // The queue screen and the active-job screen are both mounted in the
+  // router stack, so both run this hook at once. supabase-js hands back
+  // the SAME channel object for a repeated topic, and adding a
+  // postgres_changes binding to an already-subscribed channel throws
+  // ("cannot add `postgres_changes` callbacks ... after `subscribe()`") —
+  // leaving the second screen with no live updates. A per-instance topic
+  // gives each subscriber its own channel. The topic was never the
+  // security boundary; RLS is, and it is unchanged.
+  const instance = useId();
 
   useEffect(() => {
     if (!storeId) return;
@@ -62,7 +71,7 @@ export function useRunnerRealtime(storeId: string | null): RealtimeStatus {
       if (data.session) supabase.realtime.setAuth(data.session.access_token);
 
       channel = supabase
-        .channel(`store:${storeId}:orders`)
+        .channel(`store:${storeId}:orders:${instance}`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "orders", filter: `store_id=eq.${storeId}` },
@@ -83,7 +92,7 @@ export function useRunnerRealtime(storeId: string | null): RealtimeStatus {
       cancelled = true;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [storeId, qc]);
+  }, [storeId, qc, instance]);
 
   return status;
 }
