@@ -45,25 +45,43 @@ export function useRunnerRealtime(storeId: string | null): RealtimeStatus {
       qc.invalidateQueries({ queryKey: ["runner", "active"] });
     };
 
-    const channel = supabase
-      .channel(`store:${storeId}:orders`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders", filter: `store_id=eq.${storeId}` },
-        refresh,
-      )
-      .subscribe((s) => {
-        if (s === "SUBSCRIBED") {
-          setStatus("live");
-          // Recover whatever was missed while disconnected.
-          refresh();
-        } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") {
-          setStatus("offline");
-        }
-      });
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    void (async () => {
+      // Realtime binds the subscription to whatever token the socket holds
+      // when the channel JOINs, and never re-authorizes it afterwards. A
+      // channel opened before the session is restored registers as `anon`
+      // and then receives nothing, permanently — observed on the web
+      // surfaces, where realtime.subscription.claims_role came back 'anon'
+      // for a signed-in staff member. `storeId` here already implies a
+      // session, but the token is set explicitly so the ordering is a
+      // property of this file rather than a coincidence upstream.
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) supabase.realtime.setAuth(data.session.access_token);
+
+      channel = supabase
+        .channel(`store:${storeId}:orders`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders", filter: `store_id=eq.${storeId}` },
+          refresh,
+        )
+        .subscribe((s) => {
+          if (s === "SUBSCRIBED") {
+            setStatus("live");
+            // Recover whatever was missed while disconnected.
+            refresh();
+          } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED") {
+            setStatus("offline");
+          }
+        });
+    })();
 
     return () => {
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [storeId, qc]);
 

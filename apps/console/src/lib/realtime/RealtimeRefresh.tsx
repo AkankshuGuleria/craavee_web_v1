@@ -23,16 +23,33 @@ import { createClient } from "@/lib/supabase/client";
  *     duplicated row (§19: "do not duplicate orders on repeated events").
  *     This matters — the local stack was observed emitting two events for
  *     a single UPDATE.
- *   * A missed event costs correctness nothing. The page still has its
- *     normal `revalidate`, and any navigation refetches. Realtime removes
- *     the wait, it does not carry the state.
+ *   * A missed event costs correctness nothing. Any navigation refetches,
+ *     and the subscription refetches once on SUBSCRIBED. Realtime removes
+ *     the wait, it does not carry the state. It has to be this way: the
+ *     stack authorizes an event lazily, so an order that has already
+ *     moved past a status this staff member can read stops delivering its
+ *     earlier events as well.
  *
- * Authorization is not implemented here. Supabase Realtime evaluates the
- * same RLS policies as the table, so a store-A packer receives nothing
- * for store B even if they remove the filter below or guess a channel
- * name. Verified directly against the local stack: a store-A change
- * delivered 2 events to the store-A packer, 0 to a packer at another
- * store, and 0 to a customer.
+ * The socket is authorized before it joins, not after. Realtime binds a
+ * postgres_changes subscription to whatever token the socket holds at
+ * JOIN time and does not re-authorize it later, so subscribing before the
+ * session has been read out of cookies produces a channel registered as
+ * `anon` that silently receives nothing forever. That was observed
+ * directly: realtime.subscription.claims_role came back 'anon' for a
+ * signed-in admin, and the board never updated. `getSession()` is the
+ * right call here even though it is not a verified read — the token is
+ * only being handed to the server, which verifies it. Nothing on this
+ * page trusts it.
+ *
+ * Authorization itself is not implemented here. Supabase Realtime
+ * evaluates the same RLS policies as the table, so a store-A packer
+ * receives nothing for store B even if they remove the filter below or
+ * guess a channel name. Verified directly against the local stack: a
+ * store-A change delivered 2 events to the store-A packer and 0 to a
+ * packer at another store. (A customer would receive their own order
+ * rows — ownership, not silence, is what the policy grants them — which
+ * is why D20's "customers poll" is enforced in the customer app rather
+ * than assumed from RLS.)
  *
  * `storeId` is null for an admin (all-store scope), in which case no
  * filter is sent and RLS alone decides what arrives.
@@ -52,38 +69,48 @@ export function RealtimeRefresh({
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(storeId ? `store:${storeId}:${table}` : `all:${table}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table,
-          // A bandwidth optimisation, not the security boundary.
-          ...(storeId ? { filter: `store_id=eq.${storeId}` } : {}),
-        },
-        () => {
-          // Coalesce a burst — packing an order fires several row events
-          // in quick succession and one refresh covers all of them.
-          if (pending.current) clearTimeout(pending.current);
-          pending.current = setTimeout(() => router.refresh(), 250);
-        },
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setConnected(true);
-          // Recover anything missed while disconnected. The client must
-          // never assume every event arrived (§18).
-          router.refresh();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          setConnected(false);
-        }
-      });
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) supabase.realtime.setAuth(data.session.access_token);
+
+      channel = supabase
+        .channel(storeId ? `store:${storeId}:${table}` : `all:${table}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table,
+            // A bandwidth optimisation, not the security boundary.
+            ...(storeId ? { filter: `store_id=eq.${storeId}` } : {}),
+          },
+          () => {
+            // Coalesce a burst — packing an order fires several row events
+            // in quick succession and one refresh covers all of them.
+            if (pending.current) clearTimeout(pending.current);
+            pending.current = setTimeout(() => router.refresh(), 250);
+          },
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            setConnected(true);
+            // Recover anything missed while disconnected. The client must
+            // never assume every event arrived (§18).
+            router.refresh();
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            setConnected(false);
+          }
+        });
+    })();
 
     return () => {
+      cancelled = true;
       if (pending.current) clearTimeout(pending.current);
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [table, storeId, router]);
 
