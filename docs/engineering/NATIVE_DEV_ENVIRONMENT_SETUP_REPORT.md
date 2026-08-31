@@ -518,3 +518,77 @@ both be set globally.
 | --- | --- |
 | **VERIFIED** | Everything in §17, plus: `pod install`, `xcodebuild` (`Build Succeeded`, 0 errors), `gradlew :app:assembleDebug` (`BUILD SUCCESSFUL`, 79 MB APK), install and launch on both devices, live Supabase data through RLS in the running app |
 | **BLOCKED** | *(nothing)* |
+
+---
+
+## 19. Update — 2026-08-31, native readiness final fixes
+
+Status after the three fixes recorded in
+`NATIVE_APP_READINESS_REPORT.md`:
+
+| | |
+| --- | --- |
+| iOS native launch | **VERIFIED** |
+| Android native launch | **VERIFIED** |
+| Web | **VERIFIED** |
+| Phone normalization | **VERIFIED** |
+| Local OTP behaviour | **VERIFIED (test-OTP) / BLOCKED (real SMS send)** |
+| Git executable modes | **VERIFIED** — all `scripts/*.sh` are `100755` |
+
+### The local Auth boundary is permanent, not a setup gap
+
+`supabase start` prints `no SMS provider is enabled. Disabling phone
+login` and sets `GOTRUE_EXTERNAL_PHONE_ENABLED=false`. The environment
+cannot fix this: Supabase provides no mock SMS provider, so enabling the
+send step would require real provider credentials.
+
+**`signInWithOtp` therefore cannot work locally, on any platform** —
+confirmed identically on iOS, Android and web
+(`400 phone_provider_disabled` on `POST /auth/v1/otp`). Local sign-in
+goes through `verifyOtp` with an `[auth.sms.test_otp]` phone and code
+`123456`. Real SMS delivery is verifiable only against a hosted project
+with a configured provider and has **not** been exercised.
+
+### A `config.toml` change needs a full restart
+
+`[auth.sms.test_otp]` is read into `GOTRUE_SMS_TEST_OTP` at container
+start. `npm run db:reset` does **not** pick it up:
+
+```
+npx supabase stop && npx supabase start && npm run db:reset
+```
+
+Verify what GoTrue actually loaded rather than trusting the file:
+
+```
+docker exec supabase_auth_craavee_web_v1 env | grep GOTRUE_SMS_TEST_OTP
+```
+
+### Toolchain notes added by this pass
+
+**`npm ci` needs raised timeouts on a slow link.** A cold run (after the
+npm cache was cleared for disk headroom) failed with `ETIMEDOUT` —
+individual tarballs took 118–196 s while the registry itself answered in
+1.5 s. It wipes `node_modules` before failing, so every downstream
+command then fails for that reason rather than any real fault:
+
+```
+npm ci --fetch-timeout=900000 --fetch-retries=6 \
+       --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=300000
+```
+
+**Docker VM clock skew** produced a transient
+`PGRST303 "JWT issued at future"` on a first authenticated query, which
+cleared on reload. Worth recognising rather than debugging as an RLS or
+token problem.
+
+**No rebuild was needed** for either native app: only fixtures, config and
+test files changed, so the already-installed `com.craavee.app` on both
+devices was simply re-run against Metro.
+
+### Storage
+
+Final internal free space: **24 GiB**, above the 18 GiB stop threshold.
+No SDKs or runtimes were installed in this pass and no aggressive cache
+deletion was required. iOS and Android were run strictly one at a time —
+each was shut down before the other started.
