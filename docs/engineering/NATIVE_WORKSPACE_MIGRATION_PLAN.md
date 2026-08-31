@@ -1,5 +1,14 @@
 # Native Workspace Migration Plan
 
+> **STATUS: EXECUTED — 2026-08-31.** Option A was approved and carried out.
+> The working tree now lives at `~/Craavee/craavee_web_v1` on internal APFS;
+> the old tree on the T7 was removed after validation. Both root causes are
+> confirmed dead: the iOS `EXConstants` script phase runs, the Gradle ASM
+> transform passes, and zero AppleDouble sidecars appeared at any stage.
+> Outcomes, measurements and problems found are in
+> `WORKSPACE_MIGRATION_REPORT.md`. This document is kept as the record of
+> the analysis that led to the decision — its predictions are assessed below.
+
 Analysis of how to make `apps/customer-runner` fully buildable on the iOS
 Simulator and Android Emulator. **Analysis only — nothing was moved,
 copied, linked, deleted or reformatted.**
@@ -310,3 +319,27 @@ exFAT volume again, and both are harmless on APFS.
 The two standing project items are untouched by this plan — Razorpay has
 no live sandbox run, and the ACL/default-privilege hardening
 (`CI_CHECKPOINT_REPORT.md` §8.1) is still outstanding.
+
+
+---
+
+## 15. How the analysis held up
+
+Added after execution.
+
+| Prediction | Outcome |
+| --- | --- |
+| Both root causes vanish on a space-free APFS path | **Correct.** iOS `EXConstants.bundle` was produced; 0 sidecars at every stage including mid-build. |
+| Option A costs ~6 GB internal | **Correct.** Working tree 2.7 GB + ios 1.2 GB + node_modules 1.3 GB. |
+| Internal free stays above the 20 GiB margin | **Wrong — it breached.** Free hit **19 GiB** mid-build. Not the workspace's fault: the Android toolchain cost far more than predicted (NDK 2.4 GB, `~/.gradle` 3.8 GB), and the default 4-ABI native build multiplied it. Recovered to 23 GiB by clearing regenerable caches and restricting to `arm64-v8a`. |
+| Moving frees ~18 GB on the T7 | **Close.** 17 GiB reclaimed (699 → 716 GiB). |
+| The Git move needs no reconfiguration | **Correct**, and for a better reason than stated: `core.worktree` is unset, so Git infers the tree from the `.git` pointer's own location. |
+| Migration risk is low | **Correct for the migration itself** — 267/267 files byte-identical, first try. The time went to two *pre-existing* environment defects (an empty `build-tools/35.0.0`, and an OOM-killed Kotlin daemon), neither predicted. |
+
+The analysis's central claim — that this repository is 2.6 MB of tracked
+source wearing 18 GB of exFAT block overhead, and that moving it is
+therefore cheap and reversible — held exactly.
+
+What the analysis **underweighted** was the *build* footprint, as opposed
+to the *workspace* footprint. A 16 GB machine running Docker, an emulator
+and Gradle simultaneously is the real constraint, not disk.
