@@ -104,3 +104,12 @@ export const adminReassignSchema = z.object({
   runnerId: uuid.optional(),
 });
 export type AdminReassignBody = z.infer<typeof adminReassignSchema>;
+
+// mark_delivery_failed (Phase 8). `reason` is required — a delivery
+// failure that nobody can explain is not actionable by the admin who has
+// to decide between reassignment and cancellation.
+export const markDeliveryFailedSchema = z.object({
+  orderId: uuid,
+  reason: z.string().min(1).max(500),
+});
+export type MarkDeliveryFailedBody = z.infer<typeof markDeliveryFailedSchema>;
