@@ -193,4 +193,4 @@ notifications the system already queues can be delivered.
 
 Unchanged. Craavee on internal APFS at `~/Craavee/craavee_web_v1`, the T7
 still exFAT and untouched, AdityaNet and Cartograph untouched, no new
-tooling installed. Internal free space ~23 GiB.
+tooling installed. Internal free space ~22 GiB.
