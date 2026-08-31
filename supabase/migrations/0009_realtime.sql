@@ -9,8 +9,14 @@
 -- polls its own order on an 8s/30s schedule. That is not an oversight to
 -- be "improved" later - it is the specific mitigation for the dossier's
 -- launch-day failure #4, socket fan-out at 800 concurrent customers.
--- Nothing in this migration grants a customer a subscription, and the
--- integration suite asserts a customer receives nothing.
+--
+-- Note what that does and does not mean. `orders_select` grants a
+-- customer their own rows, so a customer who chose to open a socket
+-- WOULD receive their own order and nothing else - measured, not
+-- assumed. D20 is therefore a client-architecture guarantee, not a
+-- database one, and the integration suite enforces it as such: it
+-- asserts the customer is scoped to rows they own, and separately scans
+-- the shipped app to prove no customer surface opens a channel at all.
 --
 -- Authorization is NOT a new mechanism. Supabase Realtime evaluates the
 -- same RLS policies as the underlying table for each subscriber, so
