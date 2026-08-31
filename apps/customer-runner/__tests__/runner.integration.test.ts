@@ -416,7 +416,7 @@ test("packed -> picked_up is rejected: the claim step cannot be skipped (§25.17
   assert.equal(r.ok, false);
   // Not the assignee (runner_id is null), so ownership fails first -
   // either answer proves the transition did not happen.
-  assert.ok(["FORBIDDEN", "INVALID_ORDER_TRANSITION"].includes(r.code!), r.code);
+  assert.ok(["FORBIDDEN", "INVALID_ORDER_TRANSITION"].includes(r.code!), `unexpected code: ${r.code}`);
   assert.equal((await orderRow(orderId)).status, "packed");
 });
 
