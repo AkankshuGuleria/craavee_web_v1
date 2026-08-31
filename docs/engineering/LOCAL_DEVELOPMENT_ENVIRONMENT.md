@@ -1,5 +1,14 @@
 # Local Development Environment — Audit and Storage Plan
 
+> **Superseded in part, 2026-08-30.** This document was the *pre-install*
+> audit. The toolchain has since been installed and verified — see
+> **`NATIVE_DEV_ENVIRONMENT_SETUP_REPORT.md`** for the authoritative
+> record of what exists on the machine now, and §19 below for what
+> changed against the predictions made here.
+>
+> The filesystem analysis (§4), the placement rules (§9) and the RAM
+> budget (§16) all held and remain current.
+
 Read-only audit of this Mac, performed to decide where native iOS and
 Android tooling should live before any of it is installed. **Nothing was
 installed, moved, deleted, or reconfigured.**
@@ -321,3 +330,42 @@ adb devices
 
 Steps 2–6 are each independently reversible and should be reviewed
 between steps rather than run as one batch.
+
+
+---
+
+## 19. Post-install reconciliation (2026-08-30)
+
+What this audit predicted, against what actually happened.
+
+| Prediction | Outcome |
+| --- | --- |
+| Internal free space is the binding constraint (23 GiB) | **Resolved by the user** before install — 74 GiB free at install time, 48+ GiB after. No step was deferred for space. |
+| Xcode ≈ 20–25 GB | **Roughly right, differently shaped.** Xcode 26 ships *thin*: the app is 3.6 GB and the iOS 26.5 simulator runtime is a separate 8.52 GB download. ~12 GB total, better than feared. |
+| Android SDK + one image ≈ 15–20 GB | **Over-estimated.** The actual SDK is 5.9 GB plus 1.6 GB of AVD data. |
+| Android SDK belongs on internal APFS | **Held.** Installed at `~/Library/Android/sdk`. |
+| 17× small-file amplification on the T7 | **Held**, and is why no cache was relocated. |
+| exFAT supports symlinks under fskit | **Held.** Metro read the project and `.env.local` off the T7 without complaint. |
+| One native platform at a time on 16 GB | **Held, and tighter than hoped.** Emulator + Docker alone: 38% memory free, swap 3.35/4 GB. |
+| Physical devices as the primary path | **Still the right call**, now for responsiveness rather than for disk space. |
+| Android Studio IDE required | **Wrong.** The CLI toolchain is sufficient for `expo run:android`; the IDE was skipped. |
+
+### The one prediction this audit did not make
+
+It assumed the environment was what stood between Craavee and a device
+build. It was not. Metro runs fine here; **three pre-existing project
+defects** block native builds — a missing monorepo Metro configuration,
+absent `ios.bundleIdentifier` / `android.package`, and duplicate React.
+See `NATIVE_DEV_ENVIRONMENT_SETUP_REPORT.md` §7.
+
+That is worth recording plainly: the "Expo could not be verified" note
+carried since Phase 3 was attributed to the sandbox, and that attribution
+was wrong.
+
+### Quick check
+
+```bash
+bash scripts/check-native-dev-env.sh
+```
+
+Read-only; changes nothing.
