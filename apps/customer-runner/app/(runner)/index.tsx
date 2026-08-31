@@ -17,6 +17,11 @@ import { useState } from "react";
  * cannot claim a second one (the database refuses it), so offering the
  * list would only produce a guaranteed error.
  */
+/** The queue deliberately has no address: RBAC_MATRIX.md §5 gives a
+ *  runner the address of their ACTIVE order only, not of every claimable
+ *  job. `addresses_select_runner_active` (migration 0007) enforces that,
+ *  so these fields come back null here by design and the row falls back
+ *  to the item count. */
 function addressLine(j: QueueJob) {
   const parts = [j.block && `Block ${j.block}`, j.floor && `Floor ${j.floor}`, j.room && `Room ${j.room}`];
   return parts.filter(Boolean).join(" · ");
@@ -82,7 +87,7 @@ export default function RunnerQueueScreen() {
           jobs.map((j) => (
             <View key={j.id} className="gap-3 rounded-2xl bg-white p-4">
               <View className="gap-1">
-                <Text className="text-lg font-semibold text-inkdeep">{addressLine(j) || "Address on claim"}</Text>
+                <Text className="text-lg font-semibold text-inkdeep">{addressLine(j) || "Address shown when you claim"}</Text>
                 {j.landmark ? <Text className="text-base text-inkdeep/60">{j.landmark}</Text> : null}
                 <Text className="text-base text-inkdeep/60">
                   {j.itemCount} {j.itemCount === 1 ? "item" : "items"}

@@ -96,15 +96,31 @@ export function useActiveJob() {
   });
 }
 
-interface FnError { code?: string }
+interface Envelope { ok?: boolean; data?: Record<string, unknown>; error?: { code?: string } }
+
+/** supabase-js does NOT put a non-2xx body on `data` - it raises and
+ *  hangs the Response off `error.context`. Reading only `data` therefore
+ *  loses every canonical error code and collapses "wrong delivery code"
+ *  into a generic retry prompt, which tells the runner to try again when
+ *  they should be asking the customer for the right code. Same unwrap the
+ *  customer checkout path already uses (hooks/useCreateOrder.ts). */
+async function safeJson(err: unknown): Promise<Envelope | null> {
+  try {
+    const ctx = (err as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") return (await ctx.json()) as Envelope;
+  } catch {
+    // fall through to the generic code below
+  }
+  return null;
+}
 
 async function invoke(name: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
-  // supabase-js surfaces a non-2xx as `error`; the canonical code lives in
-  // the JSON envelope, so read the body rather than the HTTP status.
-  const envelope = (data ?? {}) as { ok?: boolean; data?: Record<string, unknown>; error?: FnError };
-  if (error && !envelope.error) throw { code: "SERVICE_UNAVAILABLE" };
-  if (envelope.ok === false || envelope.error) throw { code: envelope.error?.code };
+  const invoked = await supabase.functions.invoke(name, { body });
+  const envelope: Envelope =
+    (invoked.error ? await safeJson(invoked.error) : (invoked.data as Envelope)) ??
+    { ok: false, error: { code: "SERVICE_UNAVAILABLE" } };
+
+  if (!envelope.ok || envelope.error) throw { code: envelope.error?.code ?? "SERVICE_UNAVAILABLE" };
   return envelope.data ?? {};
 }
 

@@ -693,3 +693,30 @@ grant  execute on function process_admin_reassign(uuid, uuid, uuid) to service_r
 -- idx_orders_store_status_placed(store_id, status, placed_at) already
 -- serves exactly that prefix, so no new index is added here - see the
 -- Phase 7 report's performance section for the plan confirming it.
+
+
+-- ============================================================
+-- 9. Runner access to the delivery address
+-- ============================================================
+-- RBAC_MATRIX.md §5, "Other profiles" row: a runner gets
+-- "own store's ACTIVE order's customer name + address only, via orders
+-- join". 0003's addresses_select is customer-or-admin, so without this
+-- a runner cannot see where to deliver.
+--
+-- Deliberately scoped to the order they are actually working
+-- (`assigned`/`picked_up`, and only their own runners.id), NOT to the
+-- claimable queue. A runner browsing open jobs has no need for anyone's
+-- address yet, and showing every unclaimed customer's door to every
+-- runner at the store would be a real privacy expansion for no
+-- operational gain - the queue shows the item count and the address
+-- arrives with the claim.
+create policy addresses_select_runner_active on addresses for select
+  using (
+    auth_role() = 'runner'
+    and exists (
+      select 1 from orders o
+      where o.address_id = addresses.id
+        and o.runner_id = auth_runner_id()
+        and o.status in ('assigned', 'picked_up')
+    )
+  );
