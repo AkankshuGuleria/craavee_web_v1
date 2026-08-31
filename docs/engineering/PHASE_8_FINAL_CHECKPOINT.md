@@ -15,7 +15,7 @@ important — what is still **not** verified.
 | Head | `4d87110` |
 | Sync merge (main → branch) | `8c11695` |
 | **Merge commit** | **`3fbe299`** |
-| **main after merge** | **`3fbe299c1a7ffe06aa8cf2340c7dcf5938ae3b20`** |
+| **main after merge** | **`3fbe299c1a7ffe06aa8cf2340c7dcf5938ae3b20`** (now `ada865d` with this document) |
 | main before merge | `1266345` (PR #12, Phase 7) |
 | Method | merge commit — no squash, no rebase, no force push |
 | Merged at | 2026-08-31 20:14 UTC |
@@ -28,10 +28,18 @@ Working tree clean, local `main` fast-forwarded to `3fbe299`.
 
 Not branch-level results — these ran against `3fbe299` itself.
 
-| Workflow | Run ID | Result |
-|---|---|---|
-| CI | [`33434909107`](https://github.com/AkankshuGuleria/craavee_web_v1/actions/runs/33434909107) | **success** |
-| Database | [`33434909062`](https://github.com/AkankshuGuleria/craavee_web_v1/actions/runs/33434909062) | **success** |
+| Workflow | Run ID | SHA | Result |
+|---|---|---|---|
+| CI | [`33434909107`](https://github.com/AkankshuGuleria/craavee_web_v1/actions/runs/33434909107) | `3fbe299` | **success** |
+| Database | [`33434909062`](https://github.com/AkankshuGuleria/craavee_web_v1/actions/runs/33434909062) | `3fbe299` | **success** |
+| CI | [`33435840453`](https://github.com/AkankshuGuleria/craavee_web_v1/actions/runs/33435840453) | `ada865d` | **success** |
+
+`ada865d` is this document, merged as PR #14 — the only difference from
+`3fbe299` is this one markdown file. The Database workflow is
+path-filtered to `supabase/** | scripts/** | apps/customer-runner/__tests__/** | packages/**`,
+so it correctly did not re-run for a docs-only change; `33434909062` at
+`3fbe299` is the run that covers the code tree, and that tree is byte
+-identical on `ada865d`.
 
 The Database workflow ran the complete chain from a clean reset —
 `0001 → 0002 → 0003 → 0004 → 0005 → 0006 → 0007 → 0008 → 0009 → 0010` —
