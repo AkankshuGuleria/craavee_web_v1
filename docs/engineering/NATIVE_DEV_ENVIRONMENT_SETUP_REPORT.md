@@ -427,3 +427,94 @@ is required, is in `PHASE_6_LOCAL_VALIDATION_PLAN.md`.
 | **OPTIONAL** | Android Studio IDE, CocoaPods, Watchman — each deliberately skipped with a reason (§4) |
 | **NOT INSTALLED** | Extra iOS runtimes, extra system images, `mas`/`xcodes` |
 | **BLOCKED** | `expo run:ios` and `expo run:android`, on three pre-existing project defects (§7) that are product changes, not environment work. **The environment itself is complete — nothing further is needed from the machine.** |
+
+---
+
+## 18. Update — 2026-08-31, after the workspace migration
+
+The "BLOCKED" row in §17 is now **resolved**. Both `expo run:ios` and
+`expo run:android` work, and Craavee runs on `Craavee_iPhone17` and
+`Craavee_Pixel7_API36`. Two things changed: PR #9 fixed the three project
+defects, and the working tree moved off exFAT to
+`~/Craavee/craavee_web_v1` (see `WORKSPACE_MIGRATION_REPORT.md`).
+
+**The repository path in §2 is out of date.** Craavee is no longer on the
+T7. The T7 remains ExFAT and still holds AdityaNet and Cartograph, which
+were never touched.
+
+### Corrected storage figures
+
+§3's budget was written before any tooling existed and understates the
+Android toolchain considerably.
+
+| | Then | Now (measured) |
+| --- | --- | --- |
+| Internal free | 46 GiB claimed after setup | **23 GiB** |
+| NDK 27.1 | not budgeted | **2.4 GB** |
+| `~/.gradle` | not budgeted | **3.8 GB** |
+| Android SDK total | 5.9 GB | ~8.3 GB with NDK |
+| Craavee working tree | 18 GB on exFAT | **2.7 GB on APFS** |
+| T7 free | 696 GiB | **716 GiB** |
+
+Free space dipped to **19 GiB** during the first Android build and was
+recovered by clearing regenerable caches. The binding constraint on this
+machine is **not** the workspace — it is the Android toolchain plus
+whatever else is resident.
+
+### Two defects in the setup this report describes
+
+**`build-tools/35.0.0` was installed as an empty directory** — zero files,
+no `package.xml`. AGP therefore treated it as missing and tried to
+re-download it, hanging with no error in a `DownloadCache` that has no
+connect timeout. §5's verification checked that packages were *listed*, not
+that they were *populated*. Repaired with:
+
+```
+rm -rf "$ANDROID_HOME/build-tools/35.0.0"
+sdkmanager --install "build-tools;35.0.0"
+```
+
+A useful check to add: every SDK package directory should contain a
+`package.xml`.
+
+```
+for d in "$ANDROID_HOME"/build-tools/*/ "$ANDROID_HOME"/platforms/*/; do
+  [ -f "$d/package.xml" ] || echo "INCOMPLETE: $d"
+done
+```
+
+**The 16 GB ceiling is stricter than §15 suggests.** "One native platform
+at a time" is necessary but not sufficient — Docker's 11 Supabase
+containers must also be stopped for an Android build. With them running,
+the Kotlin compile daemon was OOM-killed and Gradle waited on the dead
+process indefinitely, with no error. Stop the stack for the build and
+`docker start` it before launching the app.
+
+Local Gradle tuning that made the difference, in the **generated,
+untracked** `android/gradle.properties`:
+
+```
+org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m
+org.gradle.workers.max=2
+kotlin.compiler.execution.strategy=in-process
+org.gradle.parallel=false
+reactNativeArchitectures=arm64-v8a
+```
+
+`reactNativeArchitectures` is the significant one: the default builds four
+ABIs while only an `arm64-v8a` system image is installed, so three quarters
+of the native build was wasted. `assembleDebug` dropped from stalling for
+over an hour to **1m 13s**. `expo prebuild` regenerates this file, and a
+release build must restore all ABIs.
+
+**CocoaPods requires a UTF-8 locale.** `pod install` aborts with
+`Encoding::CompatibilityError` when `LANG` is unset. Note this conflicts
+with the `LC_ALL=C` workaround recorded for a `sed` failure — they cannot
+both be set globally.
+
+### Corrected status
+
+| | |
+| --- | --- |
+| **VERIFIED** | Everything in §17, plus: `pod install`, `xcodebuild` (`Build Succeeded`, 0 errors), `gradlew :app:assembleDebug` (`BUILD SUCCESSFUL`, 79 MB APK), install and launch on both devices, live Supabase data through RLS in the running app |
+| **BLOCKED** | *(nothing)* |
