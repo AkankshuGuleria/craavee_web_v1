@@ -34,14 +34,11 @@ interface Search {
   page?: string;
 }
 
-export default async function ConsoleOrdersPage({
-  searchParams,
-}: {
-  searchParams: Promise<Search>;
-}) {
-  await requireAdmin();
-  const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page ?? "1") || 1);
+/** Kept out of the component body deliberately: `Date.now()` is impure
+ *  and must not run during render (react-hooks/purity). It is read once
+ *  here and threaded through so every relative time on one render is
+ *  measured from the same instant. */
+async function loadOrders(sp: Search, page: number) {
   const now = Date.now();
   const supabase = await createClient();
 
@@ -110,7 +107,18 @@ export default async function ConsoleOrdersPage({
     runnerName: o.runner_id ? (runnerName.get(o.runner_id) ?? "Unknown") : null,
   }));
 
-  const total = count ?? 0;
+  return { orders, runners, stores, total: count ?? 0, now, error };
+}
+
+export default async function ConsoleOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}) {
+  await requireAdmin();
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page ?? "1") || 1);
+  const { orders, runners, stores, total, now, error } = await loadOrders(sp, page);
   return (
     <OpsShell
       brand="Craavee Console"

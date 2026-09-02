@@ -21,8 +21,11 @@ import { RunnerBoard, type RunnerRow } from "./RunnerBoard";
 
 export const dynamic = "force-dynamic";
 
-export default async function ConsoleRunnersPage() {
-  await requireAdmin();
+/** Kept out of the component body deliberately: `Date.now()` is impure
+ *  and must not run during render (react-hooks/purity). Reading it once
+ *  here also means every "8m ago" on a single render is measured from the
+ *  same instant. */
+async function loadRunners() {
   const now = Date.now();
   const supabase = await createClient();
 
@@ -80,6 +83,12 @@ export default async function ConsoleRunnersPage() {
     };
   });
 
+  return { rows, now, error: error?.message ?? null };
+}
+
+export default async function ConsoleRunnersPage() {
+  await requireAdmin();
+  const { rows, now, error } = await loadRunners();
   const onShift = rows.filter((r) => r.isOnline).length;
   const carrying = rows.filter((r) => r.job).length;
 
@@ -92,7 +101,7 @@ export default async function ConsoleRunnersPage() {
       subtitle={error ? "Could not load runners" : `${onShift} online · ${carrying} carrying an order`}
     >
       <RealtimeRefresh table="orders" storeId={null} />
-      <RunnerBoard runners={rows} now={now} loadError={error?.message ?? null} />
+      <RunnerBoard runners={rows} now={now} loadError={error} />
     </OpsShell>
   );
 }
