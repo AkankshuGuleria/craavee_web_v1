@@ -33,20 +33,29 @@ async function load(): Promise<{ stores: StoreState[]; error: string | null }> {
   // Live queue depth against the threshold, so the number on screen is
   // the same one create_order compares (0004 step 4) rather than a
   // different definition of "busy".
-  const { data: live } = await supabase
-    .from("orders")
-    .select("store_id, status")
-    .not("status", "in", "(delivered,cancelled,payment_failed,delivery_failed)");
+  //
+  // One head:true count per store rather than pulling every live order in
+  // and grouping them here: there are a handful of stores and there can
+  // be thousands of live orders, so counting in Postgres is both the
+  // smaller query and the one that does not grow.
+  const rows = (data ?? []) as {
+    id: string; name: string; is_open: boolean; pause_reason: string | null; max_queue_depth: number;
+  }[];
   const depth = new Map<string, number>();
-  for (const o of ((live ?? []) as { store_id: string }[])) {
-    depth.set(o.store_id, (depth.get(o.store_id) ?? 0) + 1);
-  }
+  await Promise.all(
+    rows.map(async (s) => {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("store_id", s.id)
+        .not("status", "in", "(delivered,cancelled,payment_failed,delivery_failed)");
+      depth.set(s.id, count ?? 0);
+    }),
+  );
 
   return {
     error: null,
-    stores: ((data ?? []) as {
-      id: string; name: string; is_open: boolean; pause_reason: string | null; max_queue_depth: number;
-    }[]).map((s) => ({
+    stores: rows.map((s) => ({
       id: s.id,
       name: s.name,
       isOpen: s.is_open,

@@ -333,19 +333,30 @@ inside an operational PR, and belongs to the dedicated UX phase.
    observed. Unchanged since Phase 4.
 5. **No admin control of runner availability**, by design — there is no
    backend capability (§6).
-6. **`assign_staff_role` and `settle_runner_earnings` have no UI.** Both
-   functions are built and tested; the Users and Runners administration
-   surfaces that drive them are 9B.
-7. **The order list searches by reference, not customer name** (§4).
-8. **Median fulfilment reads 0m on seed data**, because seeded orders are
+6. **`assign_staff_role` has no UI.** The function is built and tested;
+   the Users administration surface that drives it is 9B.
+7. **`settle_runner_earnings` is BLOCKED, not merely UI-less.** The
+   mechanism is built and tested, but the amount it would settle is not a
+   decided number. ENGINEERING_SPECIFICATION.md §L defers "exact runner
+   per-delivery earnings formula/amount" as an open pricing decision, and
+   `verify_delivery_code` writes `orders.delivery_fee` as an explicitly
+   documented placeholder. Stamping `settled_at` is an irreversible "this
+   runner has been paid" record; doing it against a placeholder would
+   turn a deferred pricing decision into a settled ledger entry by
+   accident. It therefore ships with **no caller** — nothing in the
+   Console reaches it — and must not be used until the formula is set by
+   the product owner.
+8. **The order list searches by reference, not customer name** (§4).
+9. **Median fulfilment reads 0m on seed data**, because seeded orders are
    placed and delivered at effectively the same timestamp. Correct
    arithmetic, unhelpful fixture.
 
 ## 18. Phase 9B starting point
 
-Already built and tested at the backend, waiting only for a surface:
-`assign_staff_role` (Users) and `settle_runner_earnings` (Runners
-administration). Inventory and catalog administration are plain admin RLS
+`assign_staff_role` (Users) is built, tested and waiting only for a
+surface. `settle_runner_earnings` is **not** — it is blocked on the
+undecided earnings formula (§17.7) and needs a product decision before a
+UI, not after. Inventory and catalog administration are plain admin RLS
 writes — `inventory_update_admin`, `products_*` — with
 `reserved_not_above_on_hand` as the database backstop; no new Edge
 Function should be needed. A dedicated audit console and refund

@@ -7,6 +7,15 @@
 // Already-settled rows are skipped rather than re-stamped, so a double
 // click settles nothing twice and honestly reports 0 — which is why
 // there is no idempotency key: the filter IS the idempotency.
+//
+// BLOCKED, deliberately unreachable. The mechanism is correct; the
+// amount it settles is not decided. ENGINEERING_SPECIFICATION.md §L
+// defers the runner earnings formula as an open pricing decision, and
+// verify_delivery_code writes `orders.delivery_fee` as a documented
+// placeholder. Stamping settled_at against a placeholder would turn that
+// deferred decision into a settled ledger entry by accident, so nothing
+// in the Console calls this and Phase 9A does not add a caller. See
+// migration 0011 §4.
 import { serviceClient, verifyCaller } from "../_shared/context.ts";
 import { httpStatusFor, parseDbError } from "../_shared/errors.ts";
 import { fail, ok, preflight } from "../_shared/http.ts";

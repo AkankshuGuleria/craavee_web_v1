@@ -20,9 +20,14 @@ import { ORDER_STATUSES, minutesBetween, median, rupees } from "@/lib/admin/form
 
 export const dynamic = "force-dynamic";
 
+// Bounds on the two queries that must read rows rather than count them.
+const FAILED_VALUE_CAP = 500;
+const RATE_WINDOW_CAP = 500;
+
 interface Overview {
   counts: Record<string, number>;
   failedValue: number;
+  failedValueTruncated: boolean;
   unassignedPacked: number;
   liveRunnerJobs: number;
   onlineRunners: number;
@@ -48,21 +53,32 @@ async function load(): Promise<Overview> {
   );
   for (const [s, c] of results) counts[s] = c;
 
-  const [{ data: failed }, { data: packed }, { data: live }, { data: runners }, { data: stores }, { data: recent }] =
-    await Promise.all([
-      supabase.from("orders").select("payable").eq("status", "delivery_failed"),
-      supabase.from("orders").select("packed_at").eq("status", "packed"),
-      supabase.from("orders").select("id").in("status", ["assigned", "picked_up"]),
-      supabase.from("runners").select("id").eq("is_online", true),
-      supabase.from("stores").select("name, is_open, pause_reason"),
-      supabase
-        .from("orders")
-        .select("placed_at, delivered_at")
-        .gte("placed_at", new Date(now - 24 * 60 * 60 * 1000).toISOString())
-        .limit(500),
-    ]);
+  // Counts are counts, not `rows.length`. A `packed` backlog can run to
+  // hundreds and the overview only ever needs the number, so nothing
+  // below fetches those rows into this process.
+  const stalePackedBefore = new Date(now - 15 * 60_000).toISOString();
+  const [
+    { data: failed }, { count: packedCount }, { count: staleCount },
+    { count: liveCount }, { count: runnerCount },
+    { data: stores }, { data: recent },
+  ] = await Promise.all([
+    // The one row fetch left: the money at risk needs a sum, and
+    // PostgREST cannot aggregate without an RPC. Bounded, and the tile
+    // says so when it is truncated.
+    supabase.from("orders").select("payable").eq("status", "delivery_failed").limit(FAILED_VALUE_CAP),
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "packed"),
+    supabase.from("orders").select("id", { count: "exact", head: true })
+      .eq("status", "packed").lt("packed_at", stalePackedBefore),
+    supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["assigned", "picked_up"]),
+    supabase.from("runners").select("id", { count: "exact", head: true }).eq("is_online", true),
+    supabase.from("stores").select("name, is_open, pause_reason"),
+    supabase
+      .from("orders")
+      .select("placed_at, delivered_at")
+      .gte("placed_at", new Date(now - 24 * 60 * 60 * 1000).toISOString())
+      .limit(RATE_WINDOW_CAP),
+  ]);
 
-  const packedRows = (packed ?? []) as { packed_at: string | null }[];
   const recentRows = (recent ?? []) as { placed_at: string | null; delivered_at: string | null }[];
   const storeRows = (stores ?? []) as { name: string; is_open: boolean; pause_reason: string | null }[];
 
@@ -74,12 +90,13 @@ async function load(): Promise<Overview> {
     counts,
     error: null,
     failedValue: ((failed ?? []) as { payable: number }[]).reduce((n, o) => n + o.payable, 0),
-    unassignedPacked: packedRows.length,
+    failedValueTruncated: (failed ?? []).length >= FAILED_VALUE_CAP,
+    unassignedPacked: packedCount ?? 0,
     // A packed order nobody has claimed for 15 minutes is the thing an
     // operator should notice before the customer does.
-    stalePacked: packedRows.filter((o) => o.packed_at && now - new Date(o.packed_at).getTime() > 15 * 60_000).length,
-    liveRunnerJobs: (live ?? []).length,
-    onlineRunners: (runners ?? []).length,
+    stalePacked: staleCount ?? 0,
+    liveRunnerJobs: liveCount ?? 0,
+    onlineRunners: runnerCount ?? 0,
     pausedStores: storeRows.filter((s) => !s.is_open).map((s) => ({ name: s.name, reason: s.pause_reason })),
     openStores: storeRows.filter((s) => s.is_open).length,
     ordersLastHour: recentRows.filter((o) => o.placed_at && now - new Date(o.placed_at).getTime() < 3_600_000).length,
@@ -149,7 +166,7 @@ export default async function OverviewPage() {
                   icon={<WarningOctagon size={14} weight="bold" />}
                   label="Failed deliveries"
                   value={String(failed)}
-                  hint={`${rupees(o.failedValue)} paid and undelivered — each one needs a decision`}
+                  hint={`${o.failedValueTruncated ? "at least " : ""}${rupees(o.failedValue)} paid and undelivered — each one needs a decision`}
                   href="/delivery-failures"
                 />
               )}

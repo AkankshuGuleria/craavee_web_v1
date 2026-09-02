@@ -429,6 +429,25 @@ comment on function process_assign_staff_role(uuid, uuid, text, uuid) is
 --
 -- Already-settled rows are skipped rather than re-stamped, so a double
 -- click settles nothing twice and reports 0 — the honest answer.
+--
+-- *** BLOCKED ON AN UNDECIDED PRODUCT DECISION — DO NOT USE IN ***
+-- *** PRODUCTION UNTIL THE EARNINGS FORMULA IS SET.            ***
+--
+-- The mechanism below is correct. The NUMBER it settles is not decided.
+-- ENGINEERING_SPECIFICATION.md §L lists "exact runner per-delivery
+-- earnings formula/amount" among the "remaining genuine open decisions
+-- ... correctly deferred rather than force-resolved — a pricing
+-- decision, not an architecture one", and verify_delivery_code (0007)
+-- accordingly writes `amount = orders.delivery_fee` as an explicitly
+-- documented PLACEHOLDER.
+--
+-- Stamping settled_at is an irreversible "this runner has been paid"
+-- record. Doing that against a placeholder amount would quietly turn a
+-- deferred pricing decision into a settled one, by accident, in the
+-- ledger. So this function ships with no caller: nothing in the Console
+-- reaches it, and Phase 9A does not add one. It is here so the capability
+-- exists and is tested the day the formula is decided — not so it can be
+-- used before then.
 create or replace function process_settle_runner_earnings(
   p_runner_id uuid,
   p_actor_id  uuid,
