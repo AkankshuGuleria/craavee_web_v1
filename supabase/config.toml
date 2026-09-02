@@ -538,6 +538,14 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.admin_adjust_inventory]
+enabled = true
+verify_jwt = false
+
+[functions.admin_upsert_product]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

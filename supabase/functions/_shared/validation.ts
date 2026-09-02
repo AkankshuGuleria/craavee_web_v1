@@ -167,3 +167,29 @@ export const setServicePauseSchema = z.object({
   maxQueueDepth: z.number().int().min(1).max(100000).optional(),
 });
 export type SetServicePauseBody = z.infer<typeof setServicePauseSchema>;
+
+// ---- Phase 9B: administration ---------------------------------------
+// Note what is NOT here: no `qtyReserved`. Reserved stock is owned by the
+// order lifecycle, so there is no field for a human to type into it.
+export const adminAdjustInventorySchema = z.object({
+  storeId: uuid,
+  productId: uuid,
+  qtyOnHand: z.number().int().min(0).max(1_000_000),
+  reason: z.string().min(1).max(200),
+});
+export type AdminAdjustInventoryBody = z.infer<typeof adminAdjustInventorySchema>;
+
+// admin_upsert_product. Prices are integers in paise (D7) — a decimal
+// here would be a rounding bug waiting for a customer.
+export const adminUpsertProductSchema = z.object({
+  productId: uuid.optional(),
+  storeId: uuid,
+  name: z.string().min(1).max(120),
+  brand: z.string().max(80).optional(),
+  category: z.string().min(1).max(60),
+  unitLabel: z.string().max(40).optional(),
+  mrp: z.number().int().min(0).max(10_000_000),
+  salePrice: z.number().int().min(0).max(10_000_000),
+  isListed: z.boolean().optional(),
+});
+export type AdminUpsertProductBody = z.infer<typeof adminUpsertProductSchema>;

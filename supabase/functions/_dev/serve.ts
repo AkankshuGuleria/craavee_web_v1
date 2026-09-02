@@ -32,6 +32,8 @@ import { handleAdminCancelOrder } from "../admin_cancel_order/handler.ts";
 import { handleAssignStaffRole } from "../assign_staff_role/handler.ts";
 import { handleSettleRunnerEarnings } from "../settle_runner_earnings/handler.ts";
 import { handleSetServicePause } from "../set_service_pause/handler.ts";
+import { handleAdminAdjustInventory } from "../admin_adjust_inventory/handler.ts";
+import { handleAdminUpsertProduct } from "../admin_upsert_product/handler.ts";
 
 const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   create_order: handleCreateOrder,
@@ -53,6 +55,8 @@ const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   assign_staff_role: handleAssignStaffRole,
   settle_runner_earnings: handleSettleRunnerEarnings,
   set_service_pause: handleSetServicePause,
+  admin_adjust_inventory: handleAdminAdjustInventory,
+  admin_upsert_product: handleAdminUpsertProduct,
 };
 
 const PORT = Number(Deno.env.get("FUNCTIONS_PORT") ?? "8790");
