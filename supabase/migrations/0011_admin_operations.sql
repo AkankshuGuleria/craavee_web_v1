@@ -579,3 +579,23 @@ grant  execute on function process_admin_cancel_order(uuid, uuid, text, uuid) to
 grant  execute on function process_assign_staff_role(uuid, uuid, text, uuid) to service_role;
 grant  execute on function process_settle_runner_earnings(uuid, uuid, uuid[]) to service_role;
 grant  execute on function process_set_service_pause(uuid, uuid, boolean, text, integer) to service_role;
+
+
+-- ============================================================
+-- 7. order_transition_rules is readable by signed-in staff
+-- ============================================================
+-- The Console offers an admin the actions the state machine actually
+-- permits, by reading them out of this table rather than hardcoding a
+-- list that drifts. That read was returning nothing: the table has RLS
+-- off but no SELECT grant for `authenticated`, so PostgREST answered
+-- with an empty set and the UI concluded "no admin action" — a silent
+-- wrong answer rather than an error.
+--
+-- The contents are the legal transition graph: from_status, to_status,
+-- actor. That is published design documentation (ORDER_STATE_MACHINE.md
+-- §2), carries no customer, financial or operational data, and knowing
+-- it grants nothing — every transition is still enforced by
+-- enforce_order_transition and the Edge Functions. Same treatment as
+-- `stores` and `zones`, which RBAC_MATRIX.md §5 already calls public
+-- reference data.
+grant select on order_transition_rules to authenticated;
