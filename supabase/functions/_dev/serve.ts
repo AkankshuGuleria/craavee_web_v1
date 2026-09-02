@@ -28,6 +28,10 @@ import { handleAdminReassign } from "../admin_reassign/handler.ts";
 import { handleMarkDeliveryFailed } from "../mark_delivery_failed/handler.ts";
 import { handleRegisterPushToken } from "../register_push_token/handler.ts";
 import { handleDispatchNotifications } from "../dispatch_notifications/handler.ts";
+import { handleAdminCancelOrder } from "../admin_cancel_order/handler.ts";
+import { handleAssignStaffRole } from "../assign_staff_role/handler.ts";
+import { handleSettleRunnerEarnings } from "../settle_runner_earnings/handler.ts";
+import { handleSetServicePause } from "../set_service_pause/handler.ts";
 
 const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   create_order: handleCreateOrder,
@@ -45,6 +49,10 @@ const ROUTES: Record<string, (req: Request) => Promise<Response>> = {
   mark_delivery_failed: handleMarkDeliveryFailed,
   register_push_token: handleRegisterPushToken,
   dispatch_notifications: handleDispatchNotifications,
+  admin_cancel_order: handleAdminCancelOrder,
+  assign_staff_role: handleAssignStaffRole,
+  settle_runner_earnings: handleSettleRunnerEarnings,
+  set_service_pause: handleSetServicePause,
 };
 
 const PORT = Number(Deno.env.get("FUNCTIONS_PORT") ?? "8790");

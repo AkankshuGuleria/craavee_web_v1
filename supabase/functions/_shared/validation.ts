@@ -122,3 +122,48 @@ export const registerPushTokenSchema = z.object({
   platform: z.enum(["ios", "android", "web"]),
 });
 export type RegisterPushTokenBody = z.infer<typeof registerPushTokenSchema>;
+
+// ---- Phase 9: admin operations -------------------------------------
+// API_CONTRACTS.md §3 "Administrative / Privileged". Note what is NOT
+// here: no amount on the cancel (the contract pairs every admin cancel
+// with a FULL refund, so there is nothing for a browser to choose), no
+// actorId anywhere (identity comes from the verified JWT, never the
+// body), and no storeId on the pause beyond which store — the flag
+// values are the only thing the caller supplies.
+
+// admin_cancel_order. Reason is required: ORDER_STATE_MACHINE #9/#14
+// both say "cancel_reason required (free text, admin-entered)".
+export const adminCancelOrderSchema = z.object({
+  orderId: uuid,
+  idempotencyKey: uuid,
+  reason: z.string().min(1).max(500),
+});
+export type AdminCancelOrderBody = z.infer<typeof adminCancelOrderSchema>;
+
+// assign_staff_role. `role: null` revokes — "has no staff_roles row" IS
+// the customer state, so there is no separate revoke endpoint.
+export const assignStaffRoleSchema = z.object({
+  profileId: uuid,
+  role: z.enum(["packer", "runner", "admin"]).nullable(),
+  storeId: uuid.optional(),
+});
+export type AssignStaffRoleBody = z.infer<typeof assignStaffRoleSchema>;
+
+// settle_runner_earnings. Omitting orderIds settles everything currently
+// unsettled for that runner.
+export const settleRunnerEarningsSchema = z.object({
+  runnerId: uuid,
+  orderIds: z.array(uuid).min(1).optional(),
+});
+export type SettleRunnerEarningsBody = z.infer<typeof settleRunnerEarningsSchema>;
+
+// set_service_pause — the kill switch. `pauseReason` is validated
+// server-side too (closing without one is refused), because a UI that
+// only asks nicely is not a validation layer.
+export const setServicePauseSchema = z.object({
+  storeId: uuid,
+  isOpen: z.boolean(),
+  pauseReason: z.string().max(200).optional(),
+  maxQueueDepth: z.number().int().min(1).max(100000).optional(),
+});
+export type SetServicePauseBody = z.infer<typeof setServicePauseSchema>;
