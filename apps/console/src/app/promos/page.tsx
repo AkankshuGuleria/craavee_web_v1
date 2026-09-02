@@ -7,7 +7,8 @@ export default function ConsolePromosPage() {
       <div className="clay-card max-w-xl p-6">
         <p className="text-sm text-white/70">
           Route structure only — real promo CRUD (D26 concurrency-safe
-          design, `promos`/`promo_redemptions`) connects in Phase 9B.
+          design, `promos`/`promo_redemptions`) is in PHASE_PLAN.md's Phase 9
+          scope but was not in the 9B brief — still a route stub.
         </p>
       </div>
     </OpsShell>
