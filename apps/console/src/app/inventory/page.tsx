@@ -7,7 +7,7 @@ export default function ConsoleInventoryPage() {
       <div className="clay-card max-w-xl p-6">
         <p className="text-sm text-white/70">
           Route structure only — real inventory queries (qty_on_hand /
-          qty_reserved, DATABASE_SPEC.md §6) connect in Phase 9.
+          qty_reserved, DATABASE_SPEC.md §6) connects in Phase 9B.
         </p>
       </div>
     </OpsShell>
