@@ -1,0 +1,128 @@
+# Staging deployment — Phase 10A.
+#
+# The one thing this workflow must never do is deploy something other than
+# what was reviewed, or deploy it somewhere other than staging. So:
+#
+#   * It runs ONLY on a push to main, plus a manual dispatch. A pull
+#     request cannot trigger it, which is what keeps a fork PR away from
+#     the credentials below (`pull_request` from a fork runs with a
+#     read-only token and no access to environment secrets, and this
+#     workflow does not offer that trigger at all).
+#   * It declares `environment: staging`, so the secrets live on that
+#     environment rather than repo-wide. A job that does not name the
+#     environment cannot read them. The `production` environment exists
+#     alongside it with a required reviewer; nothing here can reach it.
+#   * The migration credential is a DATABASE url, not a Supabase account
+#     access token. It can apply migrations to one database and cannot
+#     create, pause, bill, or reconfigure any project.
+#   * Every step prints which commit and which project it is acting on
+#     before it acts, and fails closed if a credential is absent.
+name: Deploy staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/deploy-staging.yml"
+  workflow_dispatch:
+
+# Least privilege: the job reads the repository and nothing else. It does
+# not write contents, comment on PRs, or mint an id-token.
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  migrate-staging:
+    name: Migrate staging database
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout the exact commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Report target
+        run: |
+          echo "COMMIT SHA      : ${{ github.sha }}"
+          echo "ENVIRONMENT     : staging"
+          echo "SUPABASE PROJECT: ${{ secrets.SUPABASE_PROJECT_REF }}"
+          echo "TRIGGER         : ${{ github.event_name }}"
+
+      # Fail closed. A missing secret must stop the deploy, not silently
+      # fall through to a default or to the local stack.
+      - name: Verify credentials are present
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          missing=0
+          [ -n "$DB_URL" ]      || { echo "::error::SUPABASE_DB_URL is not set on the staging environment"; missing=1; }
+          [ -n "$PROJECT_REF" ] || { echo "::error::SUPABASE_PROJECT_REF is not set on the staging environment"; missing=1; }
+          # A staging deploy must never be pointed at a production ref by
+          # accident. The ref is pinned here rather than taken on trust.
+          if [ -n "$PROJECT_REF" ] && [ "$PROJECT_REF" != "awahemlbgmymahpvhczk" ]; then
+            echo "::error::SUPABASE_PROJECT_REF is $PROJECT_REF, not the staging project. Refusing to deploy."
+            missing=1
+          fi
+          [ "$missing" -eq 0 ] || exit 1
+          echo "credentials present"
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Show migrations that would apply (dry run)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase db push --db-url "$DB_URL" --dry-run
+
+      - name: Apply migrations
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase db push --db-url "$DB_URL"
+
+      # A migration that "succeeded" while leaving the scheduled sweep
+      # uninstalled is not a successful migration. 0004 installs the
+      # pg_cron job inside an exception handler, so a failure there is a
+      # NOTICE, not an error - this step is what turns that back into a
+      # red build. See PHASE_10_POST_ADMIN_READINESS_AUDIT.md §14.
+      - name: Health check — schema, RLS, and the scheduled sweep
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          q() { psql "$DB_URL" -tAc "$1"; }
+
+          echo "MIGRATIONS : $(q "select string_agg(version, ',' order by version) from supabase_migrations.schema_migrations")"
+          echo "TABLES     : $(q "select count(*) from pg_tables where schemaname='public'")"
+          echo "FUNCTIONS  : $(q "select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'")"
+          echo "POLICIES   : $(q "select count(*) from pg_policies where schemaname='public'")"
+          echo "RLS TABLES : $(q "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity")"
+
+          cron_ext=$(q "select count(*) from pg_extension where extname='pg_cron'")
+          [ "$cron_ext" = "1" ] || { echo "::error::pg_cron extension is not installed"; exit 1; }
+
+          sweep=$(q "select count(*) from cron.job where jobname='craavee-expire-stale-reservations' and active")
+          [ "$sweep" = "1" ] || { echo "::error::the stale-reservation / expired-payment sweep is not scheduled"; exit 1; }
+
+          # The trigger that gives every new auth user a profiles row lives
+          # in the auth schema. A logical restore does not carry it, which
+          # the Phase 10A restore drill found the hard way - so it is
+          # asserted on every deploy rather than assumed.
+          authtrg=$(q "select count(*) from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='auth' and c.relname='users' and t.tgname='on_auth_user_created' and not t.tgisinternal")
+          [ "$authtrg" = "1" ] || { echo "::error::on_auth_user_created is missing on auth.users - new sign-ups would not get a profile"; exit 1; }
+
+          fails=$(q "select count(*) from cron.job_run_details d join cron.job j on j.jobid=d.jobid where j.jobname='craavee-expire-stale-reservations' and d.status='failed' and d.start_time > now() - interval '1 hour'")
+          echo "SWEEP FAILURES (last hour): $fails"
+
+          echo "MIGRATION RESULT : ok"
+          echo "HEALTH CHECK     : ok"
