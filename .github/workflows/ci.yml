@@ -16,6 +16,13 @@ on:
   # failure, so the gap was invisible until it was looked for.
   pull_request:
 
+# Least privilege (Phase 10A). This workflow only needs to read the
+# repository; it deploys nothing and writes nothing back. Declaring it
+# explicitly means the job keeps a read-only token even if the
+# repository default is later widened.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

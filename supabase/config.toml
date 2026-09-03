@@ -434,12 +434,27 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
-# Local-only: lets the Phase 4 integration tests switch the MOCK gateway
-# between ok / timeout / fail via the x-craavee-mock-gateway request
-# header. The header is ignored unless this is exactly "1"; never set it
-# in a deployed environment.
-[edge_runtime.secrets]
-CRAAVEE_ALLOW_MOCK_CONTROL = "1"
+# CRAAVEE_ALLOW_MOCK_CONTROL is deliberately NOT declared here.
+#
+# It lets the Phase 4 integration tests switch the MOCK gateway between
+# ok / timeout / fail via the x-craavee-mock-gateway header, and it must
+# never reach a deployed project. An [edge_runtime.secrets] entry does
+# not stay local: `supabase secrets set` pushes every key in this block
+# to the LINKED REMOTE project alongside the key you asked for, so one
+# local convenience flag silently followed a deploy into staging.
+#
+# That mattered because getGateway() defaults CRAAVEE_ENV to
+# "development" when it is unset (_shared/gateway/index.ts), so a
+# deployed project that lost CRAAVEE_ENV would have had both halves of
+# mockGatewayAllowed() satisfied and taken mock money instead of failing
+# closed.
+#
+# Every real consumer already supplies the flag through its own
+# environment - scripts/serve-functions.sh exports it, .github/workflows/
+# database.yml exports it, and each integration suite passes it in the
+# spawned server's `env`. Nothing local depends on this block, so it is
+# gone rather than merely commented out. Guarded by
+# apps/customer-runner/__tests__/phase10a.config.test.ts.
 
 # ---- Edge Functions (Phase 4, API_CONTRACTS.md §3) ----
 # verify_jwt = false on all three: create_order / validate_promo verify
