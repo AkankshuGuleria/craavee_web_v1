@@ -109,3 +109,44 @@ Deno.test("RazorpayGateway: webhook signature round-trips, tamper fails", async 
   assert(!gw.verifyWebhookSignature(raw, sig.slice(0, -1) + "0"));
   assert(!gw.verifyWebhookSignature(raw, null));
 });
+
+// ---------------------------------------------------------------------
+// Phase 10A. The two tests above prove getGateway() refuses the mock in a
+// deployed environment. This one guards the configuration path that fed
+// it, which the code alone cannot see.
+//
+// `supabase/config.toml` used to carry
+//
+//     [edge_runtime.secrets]
+//     CRAAVEE_ALLOW_MOCK_CONTROL = "1"
+//
+// as a local convenience. That block is not local: `supabase secrets set`
+// pushes every key in it to the LINKED REMOTE project alongside the key
+// being set. Observed against the real staging project — setting one
+// secret reported `count: 2` and the mock flag appeared in
+// `supabase secrets list`; after the block was removed the same command
+// reported `count: 1`.
+//
+// It mattered because mockGatewayAllowed() reads
+// `CRAAVEE_ENV ?? "development"`. A deployed project that simply lost
+// CRAAVEE_ENV would then satisfy both halves of the check and take mock
+// money rather than failing closed — the exact outcome
+// "production with no Razorpay creds -> fail closed" exists to prevent.
+Deno.test("config.toml never declares the mock-control flag as a pushable secret", async () => {
+  const toml = await Deno.readTextFile(new URL("../../../config.toml", import.meta.url));
+
+  // Only the [edge_runtime.secrets] block propagates to a linked project,
+  // so scope the assertion to it rather than banning the string outright —
+  // the prose above legitimately names the variable.
+  const block = toml.match(/^\[edge_runtime\.secrets\][^\[]*/m)?.[0] ?? "";
+  const declared = block
+    .split("\n")
+    .filter((l) => /^\s*[A-Z_]+\s*=/.test(l))
+    .map((l) => l.split("=")[0].trim());
+
+  assert(
+    !declared.includes("CRAAVEE_ALLOW_MOCK_CONTROL"),
+    "CRAAVEE_ALLOW_MOCK_CONTROL is declared in [edge_runtime.secrets]; it would be pushed to the linked remote project by `supabase secrets set`. Supply it from the local environment instead (scripts/serve-functions.sh, the CI workflow, or the suite's spawned server env).",
+  );
+  assertEquals(declared.filter((n) => n.startsWith("RAZORPAY")), [], "gateway credentials must never be declared in config.toml");
+});
