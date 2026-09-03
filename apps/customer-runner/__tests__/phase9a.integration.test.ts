@@ -356,29 +356,95 @@ test("§10 reassigning to a runner at another store is refused", async () => {
   assert.equal((await orderRow(orderId)).runner_id, RUNNER_A, "still with the original runner");
 });
 
-test("§10 a runner claiming while an admin reassigns produces one owner, not two", async () => {
-  // The order is `packed` and claimable, so both operations are legal and
-  // genuinely race for the same row.
+test("§10 a runner claiming while an admin reassigns never produces two owners", async () => {
+  // The invariant here is NEVER TWO OWNERS. It is deliberately not
+  // "exactly one of the two calls must succeed" - that is a stronger
+  // claim than the design makes, and asserting it made this test fail
+  // roughly a quarter of the time.
+  //
+  // The two functions take the row lock differently, which is what
+  // creates three legitimate outcomes rather than two:
+  //
+  //   claim_job          `select ... for update SKIP LOCKED` (0007 §5). If
+  //                      another transaction already holds the row it gets
+  //                      no row back and loses IMMEDIATELY with
+  //                      JOB_ALREADY_CLAIMED, by design - "a runner who
+  //                      loses should try the next order instantly, not
+  //                      block".
+  //   admin_reassign     plain `select ... for update`, so it WAITS; and
+  //                      with a target runner it requires the order to be
+  //                      `assigned` or `delivery_failed` (0007
+  //                      process_admin_reassign). `packed` is not a legal
+  //                      source - ORDER_STATE_MACHINE.md row 13 describes
+  //                      reassignment as replacing a runner who already
+  //                      holds the job.
+  //
+  // So:
+  //   * claim takes the lock first  -> order becomes `assigned` to A, then
+  //     reassign acquires, sees a legal `assigned`, and hands it to B.
+  //   * reassign takes the lock first -> claim is skipped out immediately
+  //     (JOB_ALREADY_CLAIMED) and reassign then finds `packed`, which is
+  //     illegal, so it rolls back (INVALID_ORDER_TRANSITION). BOTH LOSE,
+  //     and that is a correct, safe result: the order is untouched and
+  //     still sitting in the queue for whoever asks next.
+  //
+  // What must never happen is two owners, an illegal resting state, or a
+  // half-applied reassignment. That is what this test asserts.
   const orderId = await makePackedOrder();
+  const invBefore = await inv();
+  const payBefore = (await orderRow(orderId)).payment_status;
+
   const [claim, reassign] = await Promise.all([
     callFn("claim_job", { orderId }, runnerAJwt),
     callFn("admin_reassign", { orderId, runnerId: RUNNER_B }, adminJwt),
   ]);
   const after = await orderRow(orderId);
+  const ctx = JSON.stringify({ claim, reassign, after });
 
-  const winners = [claim.ok && RUNNER_A, reassign.ok && RUNNER_B].filter(Boolean);
-  assert.ok(winners.length >= 1, `nobody won: ${JSON.stringify({ claim, reassign })}`);
-  assert.ok(
-    after.runner_id === RUNNER_A || after.runner_id === RUNNER_B,
-    "the order belongs to exactly one of them",
-  );
-
-  // Whoever holds it, the one-live-job invariant must hold for BOTH.
+  // ---- A. Never two owners, whatever happened.
   for (const runner of [RUNNER_A, RUNNER_B]) {
     const { count } = await svc
       .from("orders").select("id", { count: "exact", head: true })
       .eq("runner_id", runner).in("status", ["assigned", "picked_up"]);
     assert.ok((count ?? 0) <= 1, `runner ${runner} ended up with ${count} live jobs`);
+  }
+
+  // ---- B. No illegal resting state. `packed` (nobody took it) and
+  // `assigned` (somebody did) are the only two this race can produce.
+  assert.ok(["packed", "assigned"].includes(after.status as string), `illegal resting status: ${ctx}`);
+  assert.equal(after.payment_status, payBefore, `payment state moved: ${ctx}`);
+  const invAfter = await inv();
+  assert.deepEqual(invAfter, invBefore, `inventory moved: ${ctx}`);
+
+  const { data: reassignAudit } = await svc
+    .from("audit_logs").select("id").eq("entity_id", orderId).eq("action", "order.reassigned");
+
+  if (reassign.ok) {
+    // ---- D. Reassignment won (it can only do so once claim has made the
+    // order `assigned`), so B holds it and the handover is complete.
+    assert.equal(after.status, "assigned", ctx);
+    assert.equal(after.runner_id, RUNNER_B, ctx);
+    assert.ok(after.delivery_code_hash, "the new owner must get a fresh code");
+    assert.equal(reassignAudit?.length, 1, "exactly one reassignment audit row");
+  } else if (claim.ok) {
+    // ---- C. Claim won and reassignment did not land: A still holds it,
+    // and nothing recorded a handover that never happened.
+    assert.equal(after.status, "assigned", ctx);
+    assert.equal(after.runner_id, RUNNER_A, ctx);
+    assert.equal(reassignAudit?.length ?? 0, 0, "no audit row for a rolled-back reassignment");
+  } else {
+    // ---- E. Both legitimately lost. This is the outcome the previous
+    // version of this test rejected.
+    assert.equal(claim.code, "JOB_ALREADY_CLAIMED", `claim lost with the wrong code: ${ctx}`);
+    assert.equal(reassign.code, "INVALID_ORDER_TRANSITION", `reassign lost with the wrong code: ${ctx}`);
+    assert.equal(after.status, "packed", `the order should be untouched: ${ctx}`);
+    assert.equal(after.runner_id, null, `no runner should own it: ${ctx}`);
+    assert.equal(reassignAudit?.length ?? 0, 0, "a failed reassignment must not be audited as one");
+
+    // ...and "still claimable" is proven by claiming it, not asserted.
+    const retry = await callFn("claim_job", { orderId }, runnerAJwt);
+    assert.ok(retry.ok, `the order was left unclaimable: ${JSON.stringify(retry)}`);
+    assert.equal((await orderRow(orderId)).runner_id, RUNNER_A);
   }
 });
 
