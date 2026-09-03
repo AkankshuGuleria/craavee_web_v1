@@ -18,6 +18,11 @@ const FN_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/functions/v1`;
 export interface FnResult<T = Record<string, unknown>> {
   ok: boolean;
   code?: string;
+  /** The server's own sentence. Only surfaced for VALIDATION_FAILED (see
+   *  `explain`), because those messages are written for an operator —
+   *  "4 units are already reserved by live orders" is actionable in a way
+   *  no generic string can be. */
+  message?: string;
   data?: T;
 }
 
@@ -35,8 +40,8 @@ export async function callFn<T = Record<string, unknown>>(
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     });
-    const j = (await r.json()) as { ok: boolean; data?: T; error?: { code: string } };
-    return { ok: j.ok, code: j.error?.code, data: j.data };
+    const j = (await r.json()) as { ok: boolean; data?: T; error?: { code: string; message?: string } };
+    return { ok: j.ok, code: j.error?.code, message: j.error?.message, data: j.data };
   } catch {
     // A dropped connection is not a refusal — say so, because the two
     // need different reactions from the operator.
@@ -46,7 +51,13 @@ export async function callFn<T = Record<string, unknown>>(
 
 /** Canonical error codes (API_CONTRACTS.md §5) turned into something an
  *  operator can act on. Raw database text never reaches this layer. */
-export function explain(code: string | undefined): string {
+export function explain(code: string | undefined, message?: string): string {
+  // A validation refusal is the one case where the server writes a
+  // sentence FOR the operator, and swallowing it to say "invalid" would
+  // hide the only useful part. Everything else maps to a fixed string, so
+  // no raw Postgres text can reach the screen.
+  if (code === "VALIDATION_FAILED" && message && message.length <= 200) return message;
+
   switch (code) {
     case "AUTH_REQUIRED":
       return "Your session expired. Sign in again.";

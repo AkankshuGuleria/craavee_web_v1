@@ -1,71 +1,80 @@
-"use client";
+// Catalog administration — Phase 9B.
+//
+// The safety property worth stating up front, because it is the thing an
+// operator will worry about: changing a price here CANNOT change what
+// anyone has already paid. `order_items.unit_price` is a snapshot copied
+// at create_order time, and `orders.subtotal`/`payable` are stored
+// integers — nothing recomputes from `products.sale_price` afterwards.
+// A price edit affects the next customer and nobody else. Test 17 pins
+// that so it stays true.
+import { OpsShell } from "@craavee/ui";
 
-// Migrated from the retired src/app/(admin)/catalog/page.tsx — same
-// content and visuals, moved to the shared OpsShell. Placeholder data;
-// real product/inventory queries against Supabase are Phase 9B work.
-import { useState } from "react";
-import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react/ssr";
-import { motion } from "motion/react";
-import { OpsShell, cn } from "@craavee/ui";
+import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { CONSOLE_NAV } from "@/lib/nav";
 
-const inventory = [
-  { id: 1, name: "Tomato Hybrid", qty: "500 g", stock: 24, price: 29, category: "Fruits & Vegetables" },
-  { id: 2, name: "Potato", qty: "1 kg", stock: 30, price: 35, category: "Fruits & Vegetables" },
-  { id: 3, name: "Protein Bar – Chocolate Fudge", qty: "1 pc", stock: 0, price: 85, category: "Munchies & Snacks" },
-  { id: 4, name: "Amul Taaza Milk", qty: "500 ml", stock: 20, price: 27, category: "Dairy & Eggs" },
-  { id: 5, name: "Whole Wheat Atta", qty: "5 kg", stock: 12, price: 89, category: "Staples" },
-];
+import { CatalogBoard, type ProductRow } from "./CatalogBoard";
 
-export default function ConsoleCatalogPage() {
-  const [search, setSearch] = useState("");
-  const filtered = inventory.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()));
+export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 40;
+
+export default async function ConsoleCatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; store?: string; listed?: string; page?: string }>;
+}) {
+  const admin = await requireAdmin();
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page ?? "1") || 1);
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("products")
+    .select("id, store_id, name, brand, category, unit_label, mrp, sale_price, is_listed", { count: "exact" });
+
+  if (sp.store) query = query.eq("store_id", sp.store);
+  if (sp.listed === "1") query = query.eq("is_listed", true);
+  if (sp.listed === "0") query = query.eq("is_listed", false);
+  const q = (sp.q ?? "").trim();
+  if (q) query = query.ilike("name", `%${q}%`);
+
+  const { data, count, error } = await query
+    .order("name")
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+  const { data: storeRows } = await supabase.from("stores").select("id, name").order("name");
+  const stores = ((storeRows ?? []) as { id: string; name: string }[]);
+  const storeName = new Map(stores.map((s) => [s.id, s.name]));
+
+  const products: ProductRow[] = ((data ?? []) as {
+    id: string; store_id: string; name: string; brand: string | null; category: string;
+    unit_label: string | null; mrp: number; sale_price: number; is_listed: boolean;
+  }[]).map((p) => ({
+    id: p.id, storeId: p.store_id, storeName: storeName.get(p.store_id) ?? "—",
+    name: p.name, brand: p.brand, category: p.category, unitLabel: p.unit_label,
+    mrp: p.mrp, salePrice: p.sale_price, isListed: p.is_listed,
+  }));
+
+  const total = count ?? 0;
   return (
-    <OpsShell brand="Craavee Console" navItems={CONSOLE_NAV} active="Catalog" title="Catalog" subtitle="Manage items and pricing">
-      <div className="clay-input mb-6 flex max-w-md items-center gap-3 px-5 py-3">
-        <MagnifyingGlass size={17} className="shrink-0 text-white/40" weight="bold" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search items…"
-          aria-label="Search catalog"
-          className="w-full bg-transparent text-sm text-white/90 placeholder:text-white/35 focus:outline-none"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((item, i) => (
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05, ease: [0.34, 1.56, 0.64, 1] }}
-            className={cn("clay-card p-4", item.stock === 0 && "opacity-60")}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="truncate text-sm font-bold text-white">{item.name}</h3>
-                <p className="text-xs text-white/45">{item.category} · {item.qty}</p>
-              </div>
-              <span
-                className={cn(
-                  "shrink-0 rounded-lg px-2 py-1 text-[10px] font-extrabold",
-                  item.stock > 6 ? "bg-emerald-500/15 text-emerald-300" : item.stock > 0 ? "bg-orange-400/15 text-orange-300" : "bg-white/10 text-white/45"
-                )}
-              >
-                {item.stock > 0 ? `${item.stock} left` : "Out"}
-              </span>
-            </div>
-            <div className="mt-4 flex items-center justify-between border-t border-dashed border-white/10 pt-3">
-              <span className="font-display text-base font-extrabold tabular-nums text-white">₹{item.price}</span>
-              <button className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-xs font-bold text-white/65 transition-[background-color,border-color,color,box-shadow,transform] hover:border-sky-300/50 hover:text-sky-200 active:scale-95">
-                <PencilSimple size={13} weight="bold" /> Edit
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+    <OpsShell
+      brand="Craavee Console"
+      navItems={CONSOLE_NAV}
+      active="Catalog"
+      title="Catalog"
+      subtitle={
+        error ? "Could not load the catalog"
+          : `${total.toLocaleString("en-IN")} product${total === 1 ? "" : "s"} · page ${page} of ${Math.max(1, Math.ceil(total / PAGE_SIZE))}`
+      }
+    >
+      <CatalogBoard
+        products={products}
+        stores={stores}
+        defaultStoreId={admin.storeId ?? stores[0]?.id ?? ""}
+        total={total} page={page} pageSize={PAGE_SIZE}
+        loadError={error?.message ?? null}
+      />
     </OpsShell>
   );
 }

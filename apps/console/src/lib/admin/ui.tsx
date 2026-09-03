@@ -105,6 +105,7 @@ const TONES = {
   live: "bg-sky-400/15 text-sky-200",
   done: "bg-emerald-400/15 text-emerald-200",
   attention: "bg-orange-400/20 text-orange-200",
+  alarm: "bg-red-400/20 text-red-200",
   dead: "bg-white/10 text-white/50",
 } as const;
 

@@ -11,6 +11,8 @@ import {
   Stack,
   Users,
   Bicycle,
+  Receipt,
+  ClipboardText,
   Ticket,
   GearSix,
 } from "@phosphor-icons/react/ssr";
@@ -26,11 +28,11 @@ import type { OpsNavItem } from "@craavee/ui";
 // OpsNavItem's doc comment in packages/ui/src/components/OpsShell.tsx
 // for why passing the raw function across the Server→Client Component
 // boundary fails at build time while a pre-rendered element does not.
-// Phase 9A ships Overview / Orders / Failures / Runners / Settings as
-// real operational surfaces. Catalog, Inventory, Users and Promos are
-// still the Phase 2B route stubs and say so on the page; /refunds and
-// /audit have no page at all yet, so they are absent rather than a nav
-// item that 404s. All four land in Phase 9B.
+// Phase 9A shipped Overview / Orders / Failures / Runners / Settings;
+// Phase 9B adds Catalog, Inventory, Users, Refunds and Audit. Promos is
+// the one remaining Phase 2B route stub — promo CRUD is in PHASE_PLAN's
+// Phase 9 scope but was not in the 9B brief, so it stays a stub that says
+// so rather than a half-built surface.
 export const CONSOLE_NAV: OpsNavItem[] = [
   { href: "/overview", label: "Overview", icon: <Gauge size={18} weight="bold" /> },
   { href: "/orders", label: "Orders", icon: <Lightning size={18} weight="bold" /> },
@@ -41,6 +43,8 @@ export const CONSOLE_NAV: OpsNavItem[] = [
   { href: "/inventory", label: "Inventory", icon: <Stack size={18} weight="bold" /> },
   { href: "/users", label: "Users", icon: <Users size={18} weight="bold" /> },
   { href: "/runners", label: "Runners", icon: <Bicycle size={18} weight="bold" /> },
+  { href: "/refunds", label: "Refunds", icon: <Receipt size={18} weight="bold" /> },
   { href: "/promos", label: "Promos", icon: <Ticket size={18} weight="bold" /> },
+  { href: "/audit", label: "Audit", icon: <ClipboardText size={18} weight="bold" /> },
   { href: "/settings", label: "Settings", icon: <GearSix size={18} weight="bold" /> },
 ];
