@@ -19,6 +19,13 @@ import { CONSOLE_NAV } from "@/lib/nav";
 
 import { RefundBoard, type RefundRow, type RefundableOrder } from "./RefundBoard";
 
+// `payments` is deliberately not readable through PostgREST — it carries
+// gateway refs and raw_event, so RBAC_MATRIX.md §5 routes reads through
+// two column-restricted views instead. This page uses the admin one; the
+// base table is never queried from a browser.
+const PAYMENTS_VIEW = "payments_admin_view";
+const REFUNDS_VIEW = "refunds_admin_view";
+
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
@@ -33,28 +40,28 @@ export default async function ConsoleRefundsPage({
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
   const supabase = await createClient();
 
+  // The base `refunds` table is unreadable from a browser even for an
+  // admin — its policy joins `payments`, which is ungranted by design —
+  // so this reads the admin view added in 0012 §4.
   const { data, count, error } = await supabase
-    .from("refunds")
-    .select("id, payment_id, amount, reason, destination, created_at, actor_id, payments!inner(order_id, amount, refunded_amount)",
+    .from(REFUNDS_VIEW)
+    .select("id, payment_id, amount, reason, created_at, actor_id, order_id, payment_amount, payment_refunded",
             { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-  const rows = ((data ?? []) as unknown as {
+  const refunds: RefundRow[] = ((data ?? []) as {
     id: string; payment_id: string; amount: number; reason: string | null;
-    destination: string; created_at: string; actor_id: string | null;
-    payments: { order_id: string; amount: number; refunded_amount: number };
-  }[]);
-
-  const refunds: RefundRow[] = rows.map((r) => ({
+    created_at: string; actor_id: string | null;
+    order_id: string; payment_amount: number; payment_refunded: number;
+  }[]).map((r) => ({
     id: r.id,
-    orderId: r.payments.order_id,
+    orderId: r.order_id,
     amount: r.amount,
     reason: r.reason,
-    destination: r.destination,
     at: r.created_at,
-    capturedTotal: r.payments.amount,
-    refundedTotal: r.payments.refunded_amount,
+    capturedTotal: r.payment_amount,
+    refundedTotal: r.payment_refunded,
   }));
 
   // Orders an admin could refund right now, so the page is a place to act
@@ -62,27 +69,36 @@ export default async function ConsoleRefundsPage({
   // condition — process_refund re-checks it and owns the decision.
   const q = (sp.q ?? "").trim().replace(/^#/, "");
   let live = supabase
-    .from("payments")
-    .select("order_id, amount, refunded_amount, status, orders!inner(status, placed_at)")
+    .from(PAYMENTS_VIEW)
+    .select("order_id, amount, refunded_amount, status")
     .eq("status", "captured")
     .order("created_at", { ascending: false })
     .limit(25);
   if (/^[0-9a-f]{4,}$/i.test(q)) live = live.ilike("order_id", `${q}%`);
 
   const { data: liveRows } = await live;
-  const refundable: RefundableOrder[] = ((liveRows ?? []) as unknown as {
+  const captured = ((liveRows ?? []) as {
     order_id: string; amount: number; refunded_amount: number;
-    orders: { status: string; placed_at: string | null };
-  }[])
-    .filter((p) => p.amount - p.refunded_amount > 0)
-    .map((p) => ({
+  }[]).filter((p) => p.amount - p.refunded_amount > 0);
+
+  const { data: orderRows } = captured.length
+    ? await supabase.from("orders").select("id, status, placed_at").in("id", captured.map((p) => p.order_id))
+    : { data: [] };
+  const orderById = new Map(((orderRows ?? []) as {
+    id: string; status: string; placed_at: string | null;
+  }[]).map((o) => [o.id, o]));
+
+  const refundable: RefundableOrder[] = captured.map((p) => {
+    const o = orderById.get(p.order_id);
+    return {
       orderId: p.order_id,
-      status: p.orders.status,
-      placedAt: p.orders.placed_at,
+      status: o?.status ?? "unknown",
+      placedAt: o?.placed_at ?? null,
       captured: p.amount,
       alreadyRefunded: p.refunded_amount,
       remaining: p.amount - p.refunded_amount,
-    }));
+    };
+  });
 
   const total = count ?? 0;
   return (

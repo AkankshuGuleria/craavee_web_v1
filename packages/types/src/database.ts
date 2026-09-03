@@ -1246,6 +1246,56 @@ export type Database = {
           },
         ]
       }
+      refunds_admin_view: {
+        Row: {
+          actor_id: string | null
+          amount: number | null
+          created_at: string | null
+          id: string | null
+          order_id: string | null
+          payment_amount: number | null
+          payment_id: string | null
+          payment_refunded: number | null
+          reason: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments_admin_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments_customer_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assert_fulfilment_actor: {
@@ -1306,8 +1356,51 @@ export type Database = {
         Args: { p_gateway_order_ref: string; p_order_id: string }
         Returns: undefined
       }
+      process_admin_adjust_inventory: {
+        Args: {
+          p_actor_id: string
+          p_product_id: string
+          p_qty_on_hand: number
+          p_reason: string
+          p_store_id: string
+        }
+        Returns: Json
+      }
+      process_admin_cancel_order: {
+        Args: {
+          p_actor_id: string
+          p_idempotency_key: string
+          p_order_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       process_admin_reassign: {
         Args: { p_actor_id: string; p_order_id: string; p_runner_id?: string }
+        Returns: Json
+      }
+      process_admin_upsert_product: {
+        Args: {
+          p_actor_id: string
+          p_brand: string
+          p_category: string
+          p_is_listed: boolean
+          p_mrp: number
+          p_name: string
+          p_product_id: string
+          p_sale_price: number
+          p_store_id: string
+          p_unit_label: string
+        }
+        Returns: Json
+      }
+      process_assign_staff_role: {
+        Args: {
+          p_actor_id: string
+          p_profile_id: string
+          p_role: string
+          p_store_id: string
+        }
         Returns: Json
       }
       process_claim_job: {
@@ -1356,6 +1449,20 @@ export type Database = {
       }
       process_release_job: {
         Args: { p_actor_id: string; p_order_id: string; p_reason?: string }
+        Returns: Json
+      }
+      process_set_service_pause: {
+        Args: {
+          p_actor_id: string
+          p_is_open: boolean
+          p_max_queue_depth: number
+          p_pause_reason: string
+          p_store_id: string
+        }
+        Returns: Json
+      }
+      process_settle_runner_earnings: {
+        Args: { p_actor_id: string; p_order_ids: string[]; p_runner_id: string }
         Returns: Json
       }
       process_stock_out: {

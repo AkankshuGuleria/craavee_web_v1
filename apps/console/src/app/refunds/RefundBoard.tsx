@@ -22,7 +22,7 @@ import {
 
 export interface RefundRow {
   id: string; orderId: string; amount: number; reason: string | null;
-  destination: string; at: string; capturedTotal: number; refundedTotal: number;
+  at: string; capturedTotal: number; refundedTotal: number;
 }
 export interface RefundableOrder {
   orderId: string; status: string; placedAt: string | null;
@@ -140,14 +140,18 @@ export function RefundBoard({
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xs font-extrabold uppercase tracking-wide text-white/40">Refund history</h2>
+        <h2 className="text-xs font-extrabold uppercase tracking-wide text-white/40">
+          Refund history <span className="ml-1 font-semibold normal-case tracking-normal text-white/30">
+            — every refund goes to the customer&rsquo;s Craavee wallet (D38); there is no gateway-instrument path yet
+          </span>
+        </h2>
         {refunds.length === 0 ? (
           <EmptyState title="No refunds issued yet" hint="Every refund, however it was triggered, appears here." />
         ) : (
           <>
             <Table label="Refunds issued">
               <thead>
-                <tr><Th>Order</Th><Th className="text-right">Amount</Th><Th>To</Th><Th>Reason</Th><Th>When</Th></tr>
+                <tr><Th>Order</Th><Th className="text-right">Amount</Th><Th>Reason</Th><Th>When</Th></tr>
               </thead>
               <tbody>
                 {refunds.map((r) => (
@@ -162,7 +166,6 @@ export function RefundBoard({
                       </div>
                     </Td>
                     <Td className="text-right font-semibold text-white/90">{rupees(r.amount)}</Td>
-                    <Td><Pill tone="done">{r.destination}</Pill></Td>
                     <Td className="text-white/65">{r.reason ?? <span className="text-white/30">—</span>}</Td>
                     <Td className="whitespace-nowrap text-white/50">{absolute(r.at)}</Td>
                   </tr>

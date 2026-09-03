@@ -247,3 +247,40 @@ revoke execute on function process_admin_adjust_inventory(uuid, uuid, uuid, inte
 revoke execute on function process_admin_upsert_product(uuid, uuid, uuid, text, text, text, text, integer, integer, boolean) from public, anon, authenticated;
 grant  execute on function process_admin_adjust_inventory(uuid, uuid, uuid, integer, text) to service_role;
 grant  execute on function process_admin_upsert_product(uuid, uuid, uuid, text, text, text, text, integer, integer, boolean) to service_role;
+
+
+-- ============================================================
+-- 4. refunds_admin_view — make the refund ledger actually readable
+-- ============================================================
+-- `refunds` has an admin SELECT policy (0003 §12) and a SELECT grant, so
+-- it looks readable. It is not: the policy's customer branch joins
+-- `payments`, and `payments` has NO select grant for `authenticated` —
+-- deliberately, because it carries gateway refs and raw_event, which
+-- RBAC_MATRIX.md §5 keeps out of the browser by routing reads through
+-- two column-restricted views instead.
+--
+-- Evaluating that policy therefore needs a privilege the caller does not
+-- have, and PostgREST answers `42501: permission denied for table
+-- payments` — for an admin too. The refund ledger has been unreadable
+-- from any client since 0003; nothing had tried to read it until this
+-- phase built the surface.
+--
+-- The fix is the pattern already in this codebase, not a new grant: an
+-- admin-scoped, security_barrier view, exactly like payments_admin_view
+-- immediately above it in 0003. `payments` stays ungranted, no policy is
+-- weakened, and the customer path is untouched — a customer still reads
+-- their own refunds through the base table's policy, which for them does
+-- not need this view at all.
+create or replace view refunds_admin_view
+  with (security_barrier = true)
+as
+select r.id, r.payment_id, r.amount, r.reason, r.actor_id, r.created_at,
+       p.order_id, p.amount as payment_amount, p.refunded_amount as payment_refunded
+from refunds r
+join payments p on p.id = r.payment_id
+where auth_role() = 'admin';
+
+grant select on refunds_admin_view to authenticated;
+
+comment on view refunds_admin_view is
+  'Phase 9B. The admin refund ledger. refunds'' own policy joins payments to check customer ownership, and payments is ungranted to authenticated by design (RBAC §5) — so the base table is unreadable even for an admin. Same shape as payments_admin_view: admin-scoped, security_barrier, no new grant on payments.';
