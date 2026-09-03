@@ -7,7 +7,7 @@ export default function ConsoleUsersPage() {
       <div className="clay-card max-w-xl p-6">
         <p className="text-sm text-white/70">
           Route structure only — real customer/profile lookups
-          (RBAC_MATRIX.md: admin full read) connect in Phase 9.
+          (RBAC_MATRIX.md: admin full read) connects in Phase 9B.
         </p>
       </div>
     </OpsShell>

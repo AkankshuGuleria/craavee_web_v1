@@ -2,7 +2,7 @@
 
 // Migrated from the retired src/app/(admin)/catalog/page.tsx — same
 // content and visuals, moved to the shared OpsShell. Placeholder data;
-// real product/inventory queries against Supabase are Phase 9 work.
+// real product/inventory queries against Supabase are Phase 9B work.
 import { useState } from "react";
 import { MagnifyingGlass, PencilSimple } from "@phosphor-icons/react/ssr";
 import { motion } from "motion/react";

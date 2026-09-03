@@ -4,7 +4,9 @@
 // build pass ("createContext is not a function") — found and fixed
 // during Phase 2B build verification, not a style preference.
 import {
+  Gauge,
   Lightning,
+  WarningOctagon,
   Package,
   Stack,
   Users,
@@ -24,8 +26,17 @@ import type { OpsNavItem } from "@craavee/ui";
 // OpsNavItem's doc comment in packages/ui/src/components/OpsShell.tsx
 // for why passing the raw function across the Server→Client Component
 // boundary fails at build time while a pre-rendered element does not.
+// Phase 9A ships Overview / Orders / Failures / Runners / Settings as
+// real operational surfaces. Catalog, Inventory, Users and Promos are
+// still the Phase 2B route stubs and say so on the page; /refunds and
+// /audit have no page at all yet, so they are absent rather than a nav
+// item that 404s. All four land in Phase 9B.
 export const CONSOLE_NAV: OpsNavItem[] = [
+  { href: "/overview", label: "Overview", icon: <Gauge size={18} weight="bold" /> },
   { href: "/orders", label: "Orders", icon: <Lightning size={18} weight="bold" /> },
+  // Directly under Orders on purpose: a failed delivery is a customer who
+  // paid and has nothing, and it should never be buried behind a submenu.
+  { href: "/delivery-failures", label: "Failures", icon: <WarningOctagon size={18} weight="bold" /> },
   { href: "/catalog", label: "Catalog", icon: <Package size={18} weight="bold" /> },
   { href: "/inventory", label: "Inventory", icon: <Stack size={18} weight="bold" /> },
   { href: "/users", label: "Users", icon: <Users size={18} weight="bold" /> },

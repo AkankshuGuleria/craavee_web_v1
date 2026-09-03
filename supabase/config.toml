@@ -522,6 +522,22 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.admin_cancel_order]
+enabled = true
+verify_jwt = false
+
+[functions.assign_staff_role]
+enabled = true
+verify_jwt = false
+
+[functions.settle_runner_earnings]
+enabled = true
+verify_jwt = false
+
+[functions.set_service_pause]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
