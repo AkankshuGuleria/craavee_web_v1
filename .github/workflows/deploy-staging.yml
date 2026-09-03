@@ -114,6 +114,25 @@ jobs:
           sweep=$(q "select count(*) from cron.job where jobname='craavee-expire-stale-reservations' and active")
           [ "$sweep" = "1" ] || { echo "::error::the stale-reservation / expired-payment sweep is not scheduled"; exit 1; }
 
+          # Phase 10B. The dispatcher existed, was deployed, and was
+          # invoked by nothing for two phases - precisely because its
+          # sibling above looks after itself and nobody checked for a
+          # second job. Asserted from here on.
+          disp=$(q "select count(*) from cron.job where jobname='craavee-dispatch-notifications' and active")
+          [ "$disp" = "1" ] || { echo "::error::the notification dispatcher is not scheduled"; exit 1; }
+
+          echo "SCHEDULED JOBS:"
+          psql "$DB_URL" -c "select jobname, schedule, active from cron.job order by jobid;"
+          echo "SCHEDULER HEALTH:"
+          psql "$DB_URL" -c "select * from scheduled_jobs_health();"
+
+          # The dispatcher being scheduled but unconfigured is a real
+          # deployment state (a fresh project, a restored one), so it is
+          # reported loudly rather than failing the build - the operator
+          # runs RUNBOOK.md §14.1 and re-runs this workflow.
+          conf=$(q "select case when count(*) = 2 then 1 else 0 end from vault.decrypted_secrets where name in ('craavee_functions_base_url','craavee_dispatch_key')")
+          [ "$conf" = "1" ] || echo "::warning::the dispatcher is scheduled but not configured - notifications will not be sent until RUNBOOK.md §14.1 is run"
+
           # The trigger that gives every new auth user a profiles row lives
           # in the auth schema. A logical restore does not carry it, which
           # the Phase 10A restore drill found the hard way - so it is

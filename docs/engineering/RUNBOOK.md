@@ -183,7 +183,22 @@ psql "$RECOVERY_URL" -f "$OUT/schema.sql"
 psql "$RECOVERY_URL" -f "$OUT/data.sql"     # begins with SET session_replication_role = replica
 ```
 
-### 7.1 Two things a logical restore does NOT carry
+### 7.0 Restore order (do not skip a step)
+
+1. Restore roles, schema, data (§7).
+2. Re-create the `auth.users` trigger (§7.1a).
+3. **Re-create BOTH cron jobs** (§7.1b) - there are two now, not one.
+4. Re-configure the dispatcher's Vault secrets (§14.1) - Vault contents are
+   encrypted with a key that does not travel with a logical dump, so the
+   restored `vault.decrypted_secrets` is empty.
+5. Verify: `select * from scheduled_jobs_health();` - every row `ok`.
+6. Validate wallet, inventory and order invariants (§8).
+
+Only then is the restored environment operational. A database that passes
+step 1 and fails steps 2-4 looks completely healthy and quietly does none
+of its scheduled work.
+
+### 7.1 Three things a logical restore does NOT carry
 
 Both were found by running the drill, not by reading documentation.
 
@@ -203,12 +218,22 @@ new `auth.users` row produced a `profiles` row afterwards. The staging
 deploy workflow now asserts this trigger on every run.
 
 **b) pg_cron jobs.** `cron.job` is not dumped. After a restore,
-`select count(*) from cron.job` is **0**. Re-apply:
+`select count(*) from cron.job` is **0**. Re-apply **both**:
 
 ```sql
 select cron.schedule('craavee-expire-stale-reservations', '* * * * *',
                      $$ select public.expire_stale_reservations(); $$);
+select cron.schedule('craavee-dispatch-notifications', '* * * * *',
+                     $$ select public.dispatch_notifications_tick(); $$);
 ```
+
+`cron.schedule` upserts on the job name, so running this twice is safe.
+
+**c) Vault secrets.** `vault.decrypted_secrets` comes back empty - the
+dump carries ciphertext, not the key. The dispatcher will then no-op with
+`{"skipped": true, "reason": "unconfigured"}` rather than fire
+unauthenticated requests, which is deliberate but means notifications go
+nowhere until you re-run §14.1.
 
 ---
 
@@ -370,7 +395,149 @@ back means restoring (§7), not reversing.
 
 ---
 
-## 14. What this runbook cannot yet do
+## 14. Notification dispatcher (Phase 10B)
+
+### 14.1 Configure it (per environment, once)
+
+The dispatcher authenticates with `x-craavee-dispatch-key`. Use a
+**dedicated key**, not the service-role key: the scheduler must store this
+value in the database to send it, and the service-role key bypasses RLS
+entirely.
+
+```bash
+DK=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 48)
+supabase secrets set CRAAVEE_DISPATCH_KEY="$DK" --project-ref <ref>
+supabase functions deploy dispatch_notifications --use-api \
+  --import-map supabase/functions/deno.json --project-ref <ref>
+psql "$DB_URL" -tAc "select configure_dispatcher('https://<ref>.supabase.co/functions/v1','$DK')"
+```
+
+Store `$DK` in the password manager. `configure_dispatcher` never returns
+it.
+
+> Do **not** try to use `SUPABASE_SERVICE_ROLE_KEY` here. The platform
+> injects that into the function runtime in a form the Management API does
+> not hand back, so the scheduler gets a 401 that cannot be diagnosed from
+> outside the runtime. That is what the dedicated key exists to avoid.
+
+### 14.2 Is the scheduled half of the system alive?
+
+```sql
+select * from scheduled_jobs_health();
+```
+
+Seven rows, all `ok` when healthy: both extensions, both cron jobs,
+dispatcher configured, no recent cron failures, outbox drained.
+
+`notification outbox drained` counts only **deliverable** rows - those
+whose profile has a registered device. `no_device=N` in the detail is
+people who declined push, not a backlog.
+
+### 14.3 Cron history
+
+```sql
+select j.jobname, d.status, d.return_message, d.start_time
+from cron.job_run_details d join cron.job j on j.jobid = d.jobid
+where d.start_time > now() - interval '1 hour'
+order by d.start_time desc limit 20;
+```
+
+`succeeded` here means the SQL ran, **not** that the notification was
+sent - the tick only enqueues an HTTP request. For the outcome:
+
+```sql
+select status_code, count(*), left(max(content), 120)
+from net._http_response where created > now() - interval '15 minutes'
+group by 1;
+```
+
+A healthy line looks like
+`200 | {"ok":true,"data":{"claimed":12,"sent":12,"dropped":0}}`.
+`401` means the dispatch key in Vault does not match the function's
+`CRAAVEE_DISPATCH_KEY` - redo §14.1.
+
+### 14.4 Outbox depth
+
+```sql
+select count(*) filter (where sent_at is null)                 as pending,
+       count(*) filter (where sent_at is null and attempts >= 5) as exhausted,
+       count(*) filter (where sent_at is not null)              as sent,
+       max(attempts) as worst_attempts
+from notification_outbox;
+```
+
+### 14.5 Run the dispatcher by hand (recovery)
+
+```bash
+curl -s -X POST "https://<ref>.supabase.co/functions/v1/dispatch_notifications" \
+  -H 'content-type: application/json' -H "x-craavee-dispatch-key: $DK" -d '{}'
+```
+
+Safe at any time, including while cron is running: rows carry a 60-second
+claim lease and `for update skip locked`, so a manual run and a scheduled
+one cannot send the same row twice.
+
+Or from SQL: `select dispatch_notifications_tick();`
+
+### 14.6 Diagnose failed attempts
+
+```sql
+select last_error, count(*), max(attempts)
+from notification_outbox where sent_at is null group by 1 order by 2 desc;
+```
+
+| `last_error` | Meaning | Action |
+|---|---|---|
+| `DeviceNotRegistered` | the app was uninstalled or the token rotated | none - the token is deleted automatically |
+| `expo 5xx` | provider outage | none - it retries next tick |
+| `MessageTooBig`, other | Expo rejected the message | inspect the row; the token is deliberately **not** deleted |
+| `null` with `attempts = 0` | never claimed | the profile has no device, or the dispatcher is not running |
+
+A row stops being retried at `attempts >= 5`. To give a batch one more
+chance after fixing the cause:
+
+```sql
+update notification_outbox set attempts = 0, claimed_at = null
+where sent_at is null and attempts >= 5 and created_at > now() - interval '1 day';
+```
+
+## 15. Stale runner jobs
+
+**There is no automatic reaper, and that is deliberate.**
+`ORDER_STATE_MACHINE.md` row #8 defines the transition (`assigned →
+packed`, actor "System (timeout)") but specifies the threshold only as
+"after N minutes". **N is not defined anywhere.** Until the project owner
+sets it, detection is all that ships - the same posture as
+`settle_runner_earnings`.
+
+```sql
+select * from stale_runner_jobs(30);   -- the threshold is yours to choose
+```
+
+| Column | Meaning |
+|---|---|
+| `legal_system_exit = true` | `assigned` with no pickup - row #8 would cover it once N exists |
+| `legal_system_exit = false` | `picked_up` and stalled - **no System actor exists**; operator only |
+
+Recovering one is a human decision, through the existing audited paths:
+
+```bash
+# hand it to a specific runner
+curl -X POST ".../admin_reassign" -H "Authorization: Bearer $ADMIN_JWT" \
+  -d '{"orderId":"...","runnerId":"..."}'
+# or release it back to the queue (assigned only)
+curl -X POST ".../admin_reassign" -H "Authorization: Bearer $ADMIN_JWT" \
+  -d '{"orderId":"..."}'
+```
+
+Both write `audit_logs`. Verify:
+
+```sql
+select action, actor_id, metadata, created_at
+from audit_logs where entity_id = '<order id>' order by created_at desc;
+```
+
+## 16. What this runbook cannot yet do
 
 Stated plainly so nobody assumes otherwise:
 
@@ -379,8 +546,11 @@ Stated plainly so nobody assumes otherwise:
 - **No web deployment.** Vercel access is not configured, so Store and
   Console are not reachable on any URL.
 - **Backups are not scheduled and not off-site.**
-- **No alerting.** Nothing pages anyone. The notification outbox in
-  particular has no dispatcher schedule and would grow silently.
+- **No alerting.** Nothing pages anyone. `scheduled_jobs_health()` will
+  tell you the truth, but only when somebody runs it.
+- **Push delivery itself is unverified.** Phase 10B proved the queue
+  drains and the provider answers; nothing has reached a handset, because
+  no EAS project or APNs/FCM credentials exist yet.
 - **PITR is unverified** and probably unavailable on the current plan.
 - **Real SMS, real push, Razorpay and Sentry ingestion remain
   unverified** — none was touched in Phase 10A.
