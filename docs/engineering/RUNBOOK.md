@@ -607,6 +607,23 @@ Expect `confirmed / captured / captured` within ~15 seconds. **The
 browser callback is not authoritative** — the order stays `created` until
 a signature-verified webhook arrives. That is by design.
 
+### 16.3a Merchant branding — what appears where
+
+Two different names, two different owners:
+
+| Surface | Shows | Set by |
+|---|---|---|
+| Razorpay Checkout / hosted page | **Craavee** | `buildCheckoutParams` sends `name: "Craavee"` |
+| **Bank 3-D Secure page, card statements** | the account's **registered business name** | Razorpay account KYC / business profile |
+
+Craavee's code controls the first and cannot control the second. If the
+bank page shows the wrong trading name, fix it in the Razorpay dashboard
+(business profile / KYC) — there is no code change that will do it, and
+`/v1/account` is a dashboard page, not an API, on a standard account.
+
+Verify after any change by running §16.3 and screenshotting both the
+checkout page and the bank OTP page.
+
 ### 16.4 Which key is Razorpay signing with?
 
 If deliveries 403, do not guess. Capture one real request and test keys

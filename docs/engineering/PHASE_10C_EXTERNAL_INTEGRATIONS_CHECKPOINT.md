@@ -23,6 +23,7 @@ Status vocabulary, used strictly and never blurred:
 | **Gateway refunds** | **DEFERRED BY DECISION (D38)** | No refund method on the adapter; refunds are wallet-only |
 | **Cross-role flow on staging** | **STAGING VERIFIED** | Razorpay-paid order driven to `delivered` across all four roles |
 | **iOS against staging** | **STAGING VERIFIED (simulator)** | Real staging auth + catalog |
+| **Android against staging** | **BLOCKED** | App cannot start in Expo Go — needs a development build, i.e. EAS |
 | **Sentry** | **BLOCKED** | No DSN supplied |
 | **EAS / push credentials** | **BLOCKED** | No Expo token; no `eas.json`; no `extra.eas.projectId` |
 | **Real handset push** | **BLOCKED** | No physical device attached (0 iOS, no `adb`) |
@@ -57,12 +58,38 @@ neither took effect — Razorpay continued signing with the API key secret.
 |---|---|
 | Which secret does Razorpay sign with? | the **API key secret** |
 | Which does Craavee verify with? | the same value, stored as `RAZORPAY_WEBHOOK_SECRET` |
-| Can a distinct one be configured? | **Unresolved** — the dashboard offers the field, but two attempts did not change the signing key |
+| Can a distinct one be configured? | **NO, on the evidence available — outcome B.** The dashboard offers the field and two save attempts did not change the signing key. The webhook-edit and delivery-history APIs both return `404 no Route matched` on a standard account, so this cannot be pursued further without Razorpay support |
 | What should production use? | a **distinct webhook secret**, if this account can be made to honour one |
 
 **A consequence worth stating plainly: rotating the Razorpay API key also
 rotates webhook verification.** Those are one credential today, and the
 runbook says so.
+
+### 2.3 Merchant display name — CORRECTED FINDING
+
+An earlier note in this phase said the checkout displayed **"SAGAR
+TAILOR"** instead of Craavee. **That was wrong, and the correction
+matters** because it changes both the severity and the owner.
+
+Verified with a fresh Test Mode checkout, screenshotted at each step:
+
+| Surface | Shows | Controlled by |
+|---|---|---|
+| Razorpay Checkout / hosted payment page | **"Craavee"**, "Craavee order payment" | `buildCheckoutParams` sends `name: "Craavee"` — correct |
+| **Bank 3-D Secure OTP page** | **"Paying to SAGAR TAILOR"** (Axis Bank, MasterCard SecureCode) | the Razorpay account's **registered business name**, passed to the card network |
+
+So Craavee's own branding is right everywhere it controls. The other name
+is the merchant descriptor the acquiring bank receives — the same string
+that appears on a customer's card statement. It comes from the Razorpay
+account's KYC/business profile and **cannot be set from our code or from
+checkout options**.
+
+The standard-account API does not expose the merchant profile
+(`/v1/account` returns an HTML dashboard page, not JSON), so this is an
+**owner action in the Razorpay dashboard**, not an engineering change.
+
+**Status: cosmetic, customer-visible, OWNER DECISION.** Not a launch
+blocker for correctness; worth fixing before real customers pay.
 
 ### 2.2 Diagnosis path (why this took several attempts)
 
@@ -263,8 +290,33 @@ through every role.
 
 `Craavee_iPhone17` pointed at the staging URL: app launches, session
 persists, staging catalog renders with live prices (₹45.00, ₹85.00,
-₹38.00, ₹19.00, ₹29.00). **Android: not validated** — no emulator or
-device was attached this phase.
+₹38.00, ₹19.00, ₹29.00).
+
+## 12.1 Android — BLOCKED, with a specific cause
+
+Attempted properly rather than skipped: the existing
+`Craavee_Pixel7_API36` AVD was booted (no new host tooling installed) and
+`expo start --android` run against staging. **The app does not start on
+Android in Expo Go:**
+
+```
+ERROR expo-notifications: Android Push notifications (remote
+notifications) functionality provided by expo-notifications was removed
+from Expo Go with the release of SDK 53. Use a development build instead.
+→ TypeError: Cannot read property 'ErrorBoundary' of undefined
+```
+
+On iOS the same SDK-53 change is only a **warning** and the app runs; on
+Android it **throws**, and the throw happens early enough to take the
+root layout's error boundary with it.
+
+**This is the same blocker as push, not a separate one.** A development
+build requires EAS, EAS requires an Expo project, and that is item 5 in
+§19. Android is therefore **BLOCKED on EAS**, not merely unverified —
+and no amount of emulator work will move it until that account exists.
+
+The emulator was shut down afterwards to free resources. Nothing was
+installed on the host.
 
 ---
 
@@ -346,15 +398,40 @@ Real staging, single runs. Observations, not KPIs.
 3. **Sentry — BLOCKED** on a DSN; no event has ever been ingested.
 4. **Distinct Razorpay webhook secret** — unresolved; today the API key
    secret doubles as the webhook key.
-5. **Merchant display name is "SAGAR TAILOR"** on the checkout page, not
-   Craavee. Customers see it at the moment of payment. Account settings,
-   not code — but a launch-blocking branding issue.
+5. **Bank 3-D Secure page and card statements show "SAGAR TAILOR"** — the
+   Razorpay account's registered business name. **Not** the checkout,
+   which correctly shows Craavee (§2.3). Fixed in Razorpay account
+   settings / KYC, not in code. Cosmetic but customer-visible.
 6. **Currency-mismatch guard is unreachable** (§6E).
 7. **Gateway refunds** deferred by D38.
-8. **Android** unvalidated this phase.
+8. **Android — BLOCKED on EAS.** The app throws on start in Expo Go (SDK 53 removed `expo-notifications` remote push there); it needs a development build. Same root cause as push.
 9. **No production environment**, no Vercel, backups unscheduled — from
    10A, unchanged.
 10. **Runner earnings formula — still BLOCKED.**
+
+---
+
+## 19. Owner decisions required (§17)
+
+None of these were resolved here, and none should be resolved by
+engineering alone.
+
+| # | Decision | Why it is yours | What it blocks |
+|---|---|---|---|
+| 1 | **SMS provider** | No authoritative document names one; the docs list Twilio / MessageBird / Textlocal / Vonage as options. Cost, deliverability and Indian DLT registration are commercial choices | **All of real SMS.** Nothing downstream can start |
+| 2 | **Dedicated Razorpay webhook secret** | Two dashboard attempts did not take effect and the API cannot be used on a standard account; this needs Razorpay support | Removes the "API-key rotation also breaks webhooks" coupling |
+| 3 | **Razorpay registered business name** | It reads "SAGAR TAILOR" on the bank 3-D Secure page and on card statements (§2.3). Changing it is a KYC/business-profile action | Customer trust at the moment of payment |
+| 4 | **Production Razorpay account** | Live keys need merchant KYC | Any real money |
+| 5 | **Expo / EAS account** | An organisation account and its ownership | Push, TestFlight, Play |
+| 6 | **Apple Developer + Google Play** | Paid enrolments | Real-device distribution |
+| 7 | **Sentry project + plan** | A staging DSN, at minimum | All error visibility |
+| 8 | **Runner earnings formula** | Still undecided since Phase 9A | `settle_runner_earnings`, any payout |
+
+## 20. Phase 10D
+
+Design-system foundation — one token source, then promoting the
+Console's `lib/admin/ui.tsx` primitives so the Store can use them — then
+the Customer / Runner / Store / Admin UI work. **Not started.**
 
 ---
 
