@@ -151,6 +151,32 @@ them in separate jobs against separate databases and never hits it.
 
 ---
 
+## 5.2 Correction (2026-09-05) — Android needed no new tooling either
+
+Physical-device validation added one correction to this document's picture
+of the toolchain, and it removes a dependency rather than adding one.
+
+**EAS is not required to run Craavee on Android.** `npx expo run:android`
+builds and installs a local development build; `eas.json` still does not
+exist and was not created. The earlier "Android is BLOCKED on EAS" reading
+conflated *Expo Go cannot run this app* (true) with *only EAS can produce a
+development build* (false).
+
+EAS remains genuinely required for **push tokens** —
+`getExpoPushTokenAsync()` cannot mint one without `extra.eas.projectId` —
+and for TestFlight/Play distribution. Those are separate from running and
+testing the app on a handset, and remain out of this PR.
+
+**The one real toolchain requirement is JDK 17**, and it was already
+documented and already installed (`openjdk@17`, keg-only, Homebrew).
+React Native 0.86 fails on JDK 25 at
+`:react-native-worklets:configureCMakeDebug` because of JDK 24+ restricted
+native access. No host software was installed for this phase.
+
+**Net dependency change for Android validation: zero.** No package was
+added, no native module introduced, no Expo or React Native version
+changed.
+
 ## 6. Conclusion
 
 The toolchain audit's real output was a **negative result**, and it is the

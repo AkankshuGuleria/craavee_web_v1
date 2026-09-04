@@ -27,6 +27,8 @@ in §7, because it is the most instructive thing in this phase.
 | 3 | No query persistence anywhere — cold start blocked on the network | Audit finding | Fixed |
 | 4 | 163 Tailwind class usages silently unresolved by 10D | **Self-inflicted, 10D** | Fixed |
 | 5 | Back button on the cart read `index` | Found in 10E | Fixed |
+| 6 | Checkout summary rendered "Subtota", "Delivery" and "₹19.0" on Android | **Found on the physical device, 10E** | Fixed |
+| 7 | Catalog MRP rendered "₹20.0" for a ₹20.00 price on Android | **Found on the physical device, 10E** | Fixed |
 
 ## 2. Tracking screen — both P0s closed
 
@@ -168,6 +170,151 @@ not local Docker.
 | Header reads "Your cart" with a "Craavee" back label | Confirmed |
 | Cart persisted across a full app relaunch | Confirmed |
 | Metro bundle | 1948 modules / 5683ms |
+
+## 6A. Android physical-device validation (2026-09-05)
+
+**Status: VERIFIED.** Craavee builds, installs, launches and is usable on a
+physical Android handset against real staging.
+
+### 6A.1 Device
+
+| Field | Measured value |
+|---|---|
+| Manufacturer / brand | vivo |
+| Model / product | `V2250` / `V2250i` (build `PD2283GF_EX_A_15.2.20.0.W30`) |
+| Android / API | **15** / **35** |
+| ABI | `arm64-v8a` (also `armeabi-v7a`, `armeabi`) |
+| Screen | 1260x2800 @ 480dpi, `font_scale` 1.0 |
+| Serial / state | `10BDAY041Z000F1` / `device` (authorized) |
+| adb | 1.0.41, platform-tools 37.0.1 |
+
+The device reports **no** marketing-name property (`ro.vivo.market.name` is
+empty), so "vivo V29" is the owner's identification. Measured codes are
+used throughout.
+
+### 6A.2 The build path — no EAS required
+
+`npx expo run:android` builds and installs a local development build
+directly. **`eas.json` does not exist and was not needed.** The Phase 10C
+conclusion that Android was "BLOCKED on EAS" conflated two separate
+things: that *Expo Go* cannot run this app (true - SDK 53 removed remote
+push from Expo Go), and that *only EAS* can produce a development build
+(false). `apps/customer-runner/android/` already exists, is gitignored as
+generated output, and Gradle builds it locally.
+
+`BUILD SUCCESSFUL in 2m 58s` (cold, 302 tasks), then ~5s incremental.
+
+**One environment requirement, already documented and initially missed by
+me.** The first build failed at
+`:react-native-worklets:configureCMakeDebug[arm64-v8a]` with "a restricted
+method in java.lang.System has been called" - JDK 25's native-access
+restrictions. React Native 0.86 needs **JDK 17**, which
+`NATIVE_DEV_ENVIRONMENT_SETUP_REPORT.md` §82 already documents, keg-only
+and deliberately not globally exported so it does not disturb other
+tooling on this machine:
+
+```
+export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+```
+
+No host software was installed; `openjdk@17` was already present. The
+`-Xmx3072m -XX:MaxMetaspaceSize=768m` setting in `android/gradle.properties`
+is the documented low-memory strategy and was left untouched.
+
+### 6A.3 Staging, not local Docker
+
+`.env.local` pointed at `http://127.0.0.1:54321`, which fails the staging
+requirement and which a handset cannot reach in any case - `127.0.0.1` is
+the phone's own loopback. The build was pointed at the real staging
+project `awahemlbgmymahpvhczk` using the **anon** key only, and the
+original file was restored afterwards. No key was printed; `service_role`
+was never used on a client.
+
+### 6A.4 Customer smoke test — real staging
+
+| Step | Result |
+|---|---|
+| Launch | Auth screen, correct paper ground and ink heading |
+| Phone entry | `+91` prefix, CTA correctly disabled until valid |
+| OTP request | Real staging auth; normalised to `+919990000001` (test OTP `919990000001`) |
+| Verify | Session established, routed to catalog |
+| Notification permission | Android 13+ `POST_NOTIFICATIONS` prompt shown and granted |
+| Catalog | Real staging products, prices, sold-out state (Bananas) |
+| Cart | Add, stepper, `1 item - ₹19.00` bar |
+| Cart persistence | **Survived force-stop + relaunch** (Zustand `persist` + AsyncStorage) |
+| Cart screen | "Your cart", stepper, Remove, honest server-authoritative subtotal copy |
+| Checkout | Two staging addresses, promo field, wallet ₹0.00, ₹19.00 + ₹12.00 = ₹31.00 |
+| Back navigation | checkout → cart → catalog → launcher, state preserved |
+
+**Not done:** no order was placed and no Razorpay payment was initiated
+from the handset. Payment remains verified only as recorded in Phase 10C.
+Android payment is therefore **UNVERIFIED**, not blocked.
+
+### 6A.5 Two real defects, found only on the device
+
+Both are Android text-clipping defects that iOS never showed, both on
+money, and both fixed in this PR.
+
+**P1 - checkout summary clipped its own labels and amounts.** The order
+summary rendered `Subtota` for "Subtotal", `Delivery` for "Delivery fee",
+and `₹19.0` / `₹12.0` for `₹19.00` / `₹12.00` - on the screen where the
+customer decides whether to pay. `Row` placed two unconstrained `Text`
+nodes in a `justify-between` row; each was free to be measured short. Fixed
+with `flex-1` on the label (stops label truncation) and `shrink-0 pr-1` on
+the amount (stops the trailing-glyph loss).
+
+**P2 - catalog MRP clipped.** `₹20.0` for a ₹20.00 MRP. Same trailing-glyph
+loss; fixed with `pr-1`.
+
+The tell in both cases was that the strike-through line drew to the *full*
+measured width while the last glyph was not painted - the view was a few
+pixels narrower than the text it had already measured. Bold rows were
+unaffected; regular weight clipped.
+
+**Two hypotheses I tested and discarded before finding the fix**, recorded
+because the wrong ones are informative: it is not text scaling
+(`font_scale` is 1.0), and it is not flex *shrinking* (`shrink-0` alone
+changed nothing - padding is what fixed it).
+
+**Honest limitation on severity.** The app loads no custom font, so it uses
+the OEM system font, and vivo's Funtouch OS ships its own. This defect is
+therefore **not confirmed to reproduce on stock Android**. A Pixel 7 API 36
+AVD exists and was booted, but running the full login flow on a second
+device was outside what this PR was asked to do, so the comparison was not
+made. The fix is safe and correct on every platform regardless; what is
+unknown is the blast radius, not the remedy. **Someone should confirm on
+stock Android before assuming every Android user saw this.**
+
+### 6A.6 Android observations
+
+- **Navigation:** hardware/gesture back is correct throughout; the header
+  renders Android's back-arrow convention rather than iOS's "Craavee"
+  back-title, which is right - §13 explicitly does not want pixel-identical
+  chrome where native conventions differ.
+- **Product images:** every card renders an empty placeholder because the
+  staging catalog has no image URLs. This is a **data gap, not a code
+  defect**; `expo-image` is wired with `contentFit` and a 150ms transition.
+  A null `imageUrl` currently renders a blank tile with no iconography -
+  logged as P2, not fixed here.
+- **Keyboard:** the numeric keypad opens on the auth screen and covers the
+  lower third; the CTA stays reachable. No keyboard-avoidance regression
+  observed on the two forms exercised.
+- **Unreproduced anomaly:** one cart (2 x Curd Cup) did not survive a
+  restart early in the session. A deliberate re-test (add → force-stop →
+  relaunch) persisted correctly. Recorded as unexplained rather than
+  claimed as either a bug or a non-issue.
+
+### 6A.7 iOS vs Android
+
+| Aspect | Result |
+|---|---|
+| Tokens, spacing, hierarchy, status vocabulary | Identical |
+| Text clipping on money | **Android only** - see 6A.5 |
+| Back affordance | Arrow (Android) vs "Craavee" back-title (iOS) - correct divergence |
+| Cart persistence | Works on both |
+| Safe areas | Correct on both |
+
+---
 
 ## 7. An honest record: my 10D visual QA passed a broken screen
 
