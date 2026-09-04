@@ -7,7 +7,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/styles/globals.css"
+    "./styles.css": "./src/styles/globals.css",
+    "./ops": "./src/ops/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
@@ -18,7 +19,8 @@
     "clsx": "^2.1.1",
     "motion": "^13.1.1",
     "opentype.js": "^2.0.0",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "@craavee/tokens": "*"
   },
   "peerDependencies": {
     "next": "^16.3.2",

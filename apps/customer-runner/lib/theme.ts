@@ -1,38 +1,42 @@
 /**
- * Shared design tokens for the customer-runner Expo app.
+ * Native access to the design tokens.
  *
- * These values are hand-mirrored from `packages/ui/DESIGN.md` (the source of
- * truth for the Craavee design system). They are duplicated here — not
- * imported from `@craavee/ui` — because that package's components are
- * DOM/web-only (built for Next.js), and NativeWind's `tailwind.config.js`
- * cannot import TypeScript at config-load time in a way that stays stable
- * across Expo's Metro/Babel pipeline. `tailwind.config.js` in this app
- * hard-codes the same palette; keep both in sync by hand until a shared
- * cross-platform token package is worth introducing.
+ * This file used to be a hand-mirrored copy of the palette, with a
+ * comment promising to replace it "until a shared cross-platform token
+ * package is worth introducing". @craavee/tokens is that package, so this
+ * is now a thin re-export plus the few native-only helpers that cannot be
+ * expressed as plain data.
  *
- * Phase 2B scope: tokens only. No screens are themed beyond the placeholder
- * route shells.
+ * Prefer Tailwind classes in components. Reach for these values only
+ * where a raw one is genuinely required — an `ActivityIndicator` colour,
+ * a shadow on a `View`, an interpolation input.
  */
+import {
+  color, space, radius, font, elevation, motion, opacity, iconSize, touchTarget,
+} from "@craavee/tokens";
 
+/** The customer and runner apps are consumer surfaces. */
+export const theme = color.consumer;
+
+export { space, radius, font, motion, opacity, iconSize, touchTarget };
+
+/** Legacy aliases, kept so existing screens keep compiling. */
 export const colors = {
-  brand: "#178A50",
-  brandDeep: "#0E2A1D",
-  paper: "#F3F5EC",
-  inkDeep: "#122019",
-  mango: "#FF8A3D",
+  brand: theme.brand,
+  brandDeep: theme.brandStrong,
+  paper: theme.bg,
+  inkDeep: theme.text,
+  mango: theme.accent,
 } as const;
 
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-} as const;
-
-export const radii = {
-  sm: 8,
-  md: 16,
-  lg: 24,
-  full: 999,
-} as const;
+/** React Native shadows are four props, not one string. */
+export function shadow(level: keyof typeof elevation) {
+  const e = elevation[level];
+  return {
+    shadowColor: "#0d1712",
+    shadowOpacity: e.nativeOpacity,
+    shadowRadius: e.nativeRadius,
+    shadowOffset: { width: 0, height: e.nativeOffsetY },
+    elevation: level === "none" ? 0 : e.nativeRadius / 2,
+  };
+}

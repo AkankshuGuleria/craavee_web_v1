@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Craavee design tokens — generated from @craavee/tokens, the single
+   source shared with the native app. See packages/tokens/build.ts.
+
+   The legacy @theme block below is retained for now: the marketing-era
+   components (aurora, marquee, warp background) still reference those
+   names, and deleting them would be a rewrite rather than a foundation.
+   PHASE_10D_DESIGN_SYSTEM_CHECKPOINT.md §Design drift classifies each
+   remaining name as MUST MIGRATE / SAFE TO KEEP / DEFERRED. New work
+   uses the token variables. */
+@import "@craavee/tokens/tokens.css";
+
+
 @theme {
   /* ---- Craavee fresh-tech brand tokens ---- */
   --color-mango: #ff8a3d;
