@@ -7,6 +7,8 @@ import { toRunnerUiError } from "../../lib/runner/errors";
 import { supabase } from "../../lib/supabase";
 import { useState } from "react";
 
+import { Screen, StaleBanner } from "../../components/ui";
+
 /**
  * Runner queue — Phase 7 §5/§17.
  *
@@ -62,18 +64,28 @@ export default function RunnerQueueScreen() {
   const jobs = queue.data ?? [];
 
   return (
-    <View className="flex-1 bg-paper">
-      <View className="flex-row items-center justify-between px-5 pb-3 pt-16">
+    // Phase 10D: `Screen` replaces `pt-16`, a magic number eyeballed
+    // against one simulator's status bar.
+    <Screen padded={false} edges={["top"]}>
+      <View className="flex-row items-center justify-between px-5 pb-3">
         <Text className="text-2xl font-bold text-brand-deep">Available jobs</Text>
-        <Pressable accessibilityRole="button" onPress={() => supabase.auth.signOut()}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          onPress={() => supabase.auth.signOut()}
+          className="min-h-min min-w-min items-center justify-center px-3"
+        >
           <Text className="text-base font-semibold text-brand">Log out</Text>
         </Pressable>
       </View>
 
+      {/* The runner already had a live/offline signal; it now uses the same
+          banner as the customer app, so "your data may be behind" reads
+          identically on both surfaces. */}
       {live === "offline" ? (
-        <Text className="px-5 pb-2 text-sm text-inkdeep/60">
-          Live updates paused — pull down to refresh.
-        </Text>
+        <View className="px-5 pb-2">
+          <StaleBanner kind="offline" onRetry={() => queue.refetch()} />
+        </View>
       ) : null}
 
       {error ? (
@@ -131,6 +143,6 @@ export default function RunnerQueueScreen() {
           ))
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }

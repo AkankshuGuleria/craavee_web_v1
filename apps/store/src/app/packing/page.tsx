@@ -16,8 +16,9 @@
 // Realtime architecture is Phase 8's. `revalidate` keeps this honest
 // without inventing infrastructure that a later phase has to unpick.
 import Link from "next/link";
-import { ArrowRight, Package } from "@phosphor-icons/react/ssr";
+import { ArrowRight } from "@phosphor-icons/react/ssr";
 import { OpsShell } from "@craavee/ui";
+import { EmptyState, ErrorState } from "@craavee/ui/ops";
 
 import { STORE_NAV } from "@/lib/nav";
 import { requireStaff } from "@/lib/auth";
@@ -65,19 +66,24 @@ export default async function StorePackingPage() {
       <RealtimeRefresh table="orders" storeId={staff.storeId} />
 
       <div className="max-w-2xl space-y-4">
-        {error && (
-          <p className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-            The queue could not be loaded. Refresh to try again — nothing has been packed or changed.
-          </p>
-        )}
+          {/* Phase 10D: the Store had NO state primitives at all — no
+              skeleton, empty, error or confirmation component anywhere in
+              the app — while the Console had nine confirm dialogs and ten
+              error states built on the very components it could not
+              import. Now they share one kit. */}
+          {error && (
+            <ErrorState
+              title="The queue could not be loaded"
+              detail="Refresh to try again — nothing has been packed or changed."
+            />
+          )}
 
-        {!error && orders.length === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
-            <Package size={28} weight="duotone" className="mx-auto mb-3 text-white/40" />
-            <p className="text-sm text-white/60">Nothing to pack right now.</p>
-            <p className="mt-1 text-xs text-white/35">Confirmed orders appear here automatically.</p>
-          </div>
-        )}
+          {!error && orders.length === 0 && (
+            <EmptyState
+              title="Nothing to pack right now"
+              hint="Confirmed orders appear here automatically."
+            />
+          )}
 
         {orders.map((o) => {
           const items = o.order_items ?? [];
