@@ -239,11 +239,30 @@ export default function CheckoutScreen() {
   );
 }
 
+/**
+ * A label/amount line in the order summary.
+ *
+ * `flex-1` on the label and `shrink-0` on the amount are load-bearing on
+ * Android, not cosmetic. Without them this row rendered "Subtota" for
+ * "Subtotal", "Delivery" for "Delivery fee" and "₹19.0" for "₹19.00" on a
+ * physical vivo V2250 (Android 15, font_scale 1.0) - money, silently
+ * wrong-looking, on the screen where the customer is deciding to pay. Two
+ * bare Texts in a `justify-between` row are each free to be measured
+ * short; giving the label the flexible space and forbidding the amount to
+ * shrink pins both. The trailing `pl-2` keeps the last glyph off the
+ * measured edge, which is the same defect ProductCard's MRP hit.
+ */
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <View className="flex-row justify-between py-0.5">
-      <Text className={`text-sm ${bold ? "font-bold text-inkdeep" : "text-inkdeep/60"}`}>{label}</Text>
-      <Text className={`text-sm ${bold ? "font-bold text-brand-deep" : "text-inkdeep"}`}>{value}</Text>
+    <View className="flex-row items-baseline justify-between py-0.5">
+      <Text className={`flex-1 text-sm ${bold ? "font-bold text-inkdeep" : "text-inkdeep/60"}`}>
+        {label}
+      </Text>
+      <Text
+        className={`shrink-0 pl-2 pr-1 text-sm ${bold ? "font-bold text-brand-deep" : "text-inkdeep"}`}
+      >
+        {value}
+      </Text>
     </View>
   );
 }

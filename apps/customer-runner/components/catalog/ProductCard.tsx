@@ -61,7 +61,15 @@ export function ProductCard({
             ₹{(product.salePrice / 100).toFixed(2)}
           </Text>
           {discounted ? (
-            <Text className="text-xs text-inkdeep/40 line-through">
+            // `pr-1` is load-bearing, not spacing. On Android this Text
+            // rendered one glyph short - "₹50.0" for a ₹50.00 MRP - while
+            // the strike-through line still drew to the full measured
+            // width, which is what gave the clipping away. The view was a
+            // few px narrower than the glyphs it had measured; the padding
+            // is what gives the last character room. Found on a physical
+            // V2250 (Android 15) at font_scale 1.0 - a layout defect, not a
+            // text-scaling artefact - and never reproduced on iOS.
+            <Text className="pr-1 text-xs text-inkdeep/40 line-through">
               ₹{(product.mrp / 100).toFixed(2)}
             </Text>
           ) : null}
