@@ -47,6 +47,13 @@ export default function CustomerLayout() {
         options={{ title: "Add an address", headerShown: true, presentation: "modal" }}
       />
       <Stack.Screen name="order/[id]" options={{ title: "Your order", headerShown: true }} />
+      {/* Slice 2. Search owns the header itself (the field IS the header),
+          so it renders headerless; product detail keeps the standard bar. */}
+      <Stack.Screen name="search" options={{ title: "Search", headerShown: false }} />
+      <Stack.Screen
+        name="product/[id]"
+        options={{ title: "Product", headerShown: true }}
+      />
     </Stack>
   );
 }
