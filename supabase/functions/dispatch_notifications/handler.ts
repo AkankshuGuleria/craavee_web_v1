@@ -25,7 +25,26 @@ import { fail, ok, preflight } from "../_shared/http.ts";
 import { captureException } from "../_shared/sentry.ts";
 
 const FN = "dispatch_notifications";
-const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+const EXPO_PUSH_DEFAULT = "https://exp.host/--/api/v2/push/send";
+
+/** The provider endpoint. Overridable ONLY in an explicitly non-production
+ *  dev/CI context, exactly as the mock payment gateway is
+ *  (_shared/gateway/index.ts mockGatewayAllowed) - CRAAVEE_ALLOW_MOCK_CONTROL=1
+ *  AND CRAAVEE_ENV not production/staging. Both halves are required, so a
+ *  deployed environment that merely leaves the override set still talks to
+ *  Expo.
+ *
+ *  This exists because the retry, dead-token and duplicate-send paths below
+ *  are only observable if something can answer as the provider. Without it
+ *  the only honest test is "the dispatcher rejects an unauthenticated
+ *  caller", which is what Phase 8 was limited to. */
+function expoPushUrl(): string {
+  const env = (Deno.env.get("CRAAVEE_ENV") ?? "development").toLowerCase();
+  const allowed = Deno.env.get("CRAAVEE_ALLOW_MOCK_CONTROL") === "1" &&
+    env !== "production" && env !== "staging";
+  const override = Deno.env.get("EXPO_PUSH_URL");
+  return allowed && override ? override : EXPO_PUSH_DEFAULT;
+}
 
 interface Claimed {
   outbox_id: string;
@@ -44,8 +63,22 @@ export async function handleDispatchNotifications(req: Request): Promise<Respons
 
   // Service-role only: this is a scheduled/internal drain, not a client
   // endpoint. verifyCaller is not used because there is no user here.
+  // CRAAVEE_DISPATCH_KEY is the deployed credential; the service-role key
+  // remains the fallback so the local dev server and the existing suites
+  // keep working with no extra configuration.
+  //
+  // A dedicated key is not ceremony. The scheduler has to hold this value
+  // in the database in order to send it (migration 0013), and the
+  // service-role key is the one credential that bypasses RLS entirely -
+  // a purpose-specific secret there means the scheduler can invoke exactly
+  // one function and nothing else. It is also the only observable option:
+  // on hosted Supabase the ambient SUPABASE_SERVICE_ROLE_KEY is injected
+  // by the platform in a form the Management API does not hand back, so a
+  // scheduler configured against "the service-role key" returns a 401 that
+  // cannot be diagnosed from outside the runtime. That cost real time here.
   const secret = req.headers.get("x-craavee-dispatch-key");
-  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const expected = Deno.env.get("CRAAVEE_DISPATCH_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!expected || secret !== expected) {
     return fail("AUTH_REQUIRED", "dispatcher key required", 401);
   }
@@ -73,7 +106,7 @@ export async function handleDispatchNotifications(req: Request): Promise<Respons
     let sent = 0;
     let dropped = 0;
 
-    const res = await fetch(EXPO_PUSH_URL, {
+    const res = await fetch(expoPushUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(messages),
