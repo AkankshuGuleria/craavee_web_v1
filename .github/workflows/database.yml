@@ -25,16 +25,21 @@ on:
       - ".github/workflows/database.yml"
   # No `branches:` filter: this must run on every pull request, whatever its
   # base — the review stack is stacked PRs based on each other's branches,
-  # not on main. The `paths` filter below is kept: this job provisions a full
-  # Postgres/Supabase Docker stack, so it stays scoped to changes that can
-  # actually affect database correctness.
+  # not on main.
+  #
+  # No `paths:` filter either, and that is deliberate despite the cost.
+  # `db-test` is a REQUIRED status check on main (Phase 10A). A required
+  # check that is path-filtered never reports on a PR outside those paths,
+  # and GitHub treats "never reported" as "not satisfied" — so a
+  # documentation-only PR became permanently unmergeable. Phase 10C's own
+  # PR was the first to hit it.
+  #
+  # The alternatives were worse: dropping `db-test` from the required set
+  # would let a genuinely broken migration merge, and a companion
+  # skip-job that reports success under the same name reports green
+  # without having checked anything. Nine minutes on a docs PR is the
+  # cheaper mistake.
   pull_request:
-    paths:
-      - "supabase/**"
-      - "scripts/**"
-      - "apps/customer-runner/__tests__/**"
-      - "packages/**"
-      - ".github/workflows/database.yml"
 
 # Least privilege (Phase 10A). This workflow only needs to read the
 # repository; it deploys nothing and writes nothing back. Declaring it
