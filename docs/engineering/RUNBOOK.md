@@ -537,7 +537,177 @@ select action, actor_id, metadata, created_at
 from audit_logs where entity_id = '<order id>' order by created_at desc;
 ```
 
-## 16. What this runbook cannot yet do
+## 16. Razorpay (Phase 10C)
+
+### 16.1 Test Mode credentials
+
+Dashboard → Settings → API Keys with **Test Mode on**. The key id starts
+`rzp_test_`; `rzp_live_` is real money and must never reach staging.
+
+```bash
+supabase secrets set \
+  RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... RAZORPAY_WEBHOOK_SECRET=... \
+  PAYMENT_GATEWAY=razorpay --project-ref <ref>
+supabase functions deploy create_order payment_webhook refund --use-api \
+  --import-map supabase/functions/deno.json --project-ref <ref>
+```
+
+All three Razorpay values are required: `getGateway()` checks
+`keyId && keySecret && webhookSecret` and otherwise fails closed.
+
+### 16.2 Webhook
+
+Dashboard → Account & Settings → Webhooks → Add New Webhook.
+
+- URL `https://<ref>.supabase.co/functions/v1/payment_webhook`
+- Events: `payment.captured`, `payment.failed`
+
+> **The secret field is the trap.** On this account Razorpay signs with
+> the **API key secret**, not with a distinct webhook secret — a separate
+> one was entered twice and never took effect. So
+> `RAZORPAY_WEBHOOK_SECRET` must be set to the **API key secret** value.
+>
+> **Therefore rotating the API key also rotates webhook verification.**
+> After any key rotation, update `RAZORPAY_WEBHOOK_SECRET` too and
+> redeploy `payment_webhook`, or every delivery starts 403-ing.
+>
+> Before production, try again to configure a genuinely distinct webhook
+> secret and confirm with §16.4 which key is actually in use.
+
+Enabling all 54 event types is harmless: `order.paid` maps to a capture
+but the capture branch is guarded on order state, so the second event is
+an audited no-op.
+
+### 16.3 A sandbox transaction
+
+Indian test card — an international card is declined by this account:
+
+```
+card 5267 3181 8797 5449   any future expiry   any CVV   OTP 1234
+```
+
+```bash
+# order + checkout params
+curl -s -X POST "$STAGING_URL/functions/v1/create_order" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $JWT" \
+  -H 'content-type: application/json' \
+  -d '{"idempotencyKey":"<uuid>","addressId":"<uuid>","items":[{"productId":"<uuid>","qty":1}]}'
+```
+
+Pay via Razorpay's hosted checkout (POST the returned `order_id` to
+`https://api.razorpay.com/v1/checkout/embedded`). Then watch the truth:
+
+```sql
+select o.status, o.payment_status, p.status, p.gateway_payment_ref
+from orders o join payments p on p.order_id = o.id where o.id = '<order>';
+select gateway_event_id, processed_at from webhook_events order by created_at desc limit 3;
+```
+
+Expect `confirmed / captured / captured` within ~15 seconds. **The
+browser callback is not authoritative** — the order stays `created` until
+a signature-verified webhook arrives. That is by design.
+
+### 16.3a Merchant branding — what appears where
+
+Two different names, two different owners:
+
+| Surface | Shows | Set by |
+|---|---|---|
+| Razorpay Checkout / hosted page | **Craavee** | `buildCheckoutParams` sends `name: "Craavee"` |
+| **Bank 3-D Secure page, card statements** | the account's **registered business name** | Razorpay account KYC / business profile |
+
+Craavee's code controls the first and cannot control the second. If the
+bank page shows the wrong trading name, fix it in the Razorpay dashboard
+(business profile / KYC) — there is no code change that will do it, and
+`/v1/account` is a dashboard page, not an API, on a standard account.
+
+Verify after any change by running §16.3 and screenshotting both the
+checkout page and the bank OTP page.
+
+### 16.4 Which key is Razorpay signing with?
+
+If deliveries 403, do not guess. Capture one real request and test keys
+offline:
+
+```python
+import hmac, hashlib
+hmac.new(candidate.encode(), raw_body, hashlib.sha256).hexdigest() == received_signature
+```
+
+Try `RAZORPAY_WEBHOOK_SECRET`, then `RAZORPAY_KEY_SECRET`. Whichever
+matches is the key in use.
+
+Check reachability first, so you are debugging the right thing:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  "$STAGING_URL/functions/v1/payment_webhook" \
+  -H 'content-type: application/json' -H 'x-razorpay-signature: bogus' -d '{}'
+```
+
+`403` means the request reached our handler and was refused — the
+platform is not blocking. `401` would mean it never got that far.
+
+### 16.5 Late capture (D36)
+
+A payment captured after Craavee expired the order. To rehearse:
+
+```sql
+update orders set reservation_expires_at = now() - interval '1 minute' where id = '<order>';
+```
+
+Wait for the sweep (`payment_failed`), then pay the still-payable
+Razorpay order. Expect: order **stays** `payment_failed`,
+`refunded_amount` = full, one `refunds` row
+(`late_capture_reconciliation`, no gateway ref — wallet only), a
+`+amount` `wallet_ledger` row, inventory **not** restored, and a
+`payment.late_capture_reconciled` audit row.
+
+### 16.6 Refunds
+
+**Wallet only (D38).** `PaymentGatewayAdapter` has no refund method;
+Craavee never calls Razorpay's refund API. A gateway refund is a product
+decision, not a bug.
+
+### 16.7 Disabling the gateway safely
+
+Remove the credentials and redeploy:
+
+```bash
+supabase secrets unset RAZORPAY_KEY_ID RAZORPAY_KEY_SECRET RAZORPAY_WEBHOOK_SECRET --project-ref <ref>
+supabase functions deploy create_order payment_webhook refund --use-api \
+  --import-map supabase/functions/deno.json --project-ref <ref>
+```
+
+With `CRAAVEE_ENV=staging` or `production` this **fails closed** —
+`create_order` returns `PAYMENT_SETUP_FAILED` rather than falling back to
+the mock. Wallet-covered orders (`payable = 0`) still complete, because
+they never reach the gateway.
+
+### 16.8 Secret rotation
+
+| Secret | Effect of rotating |
+|---|---|
+| `RAZORPAY_KEY_ID` / `KEY_SECRET` | **also breaks webhook verification** (§16.2). Update `RAZORPAY_WEBHOOK_SECRET` to the new key secret and redeploy in the same change. |
+| `RAZORPAY_WEBHOOK_SECRET` | only meaningful once a genuinely distinct webhook secret works |
+
+Then re-run §16.3 and confirm a fresh order reaches `confirmed`.
+
+## 17. SMS, push and Sentry — not configured
+
+Recorded so nobody assumes otherwise:
+
+- **SMS: no provider chosen.** Staging uses fixed test OTPs (§14.1 rules
+  still apply: never push that config to production). A provider decision
+  is required before any credential is useful.
+- **Push: no EAS project.** No `eas.json`, no `expo.extra.eas.projectId`,
+  so a token cannot be minted. 10B's dispatcher drains the queue and the
+  provider answers — **that is not handset delivery.**
+- **Sentry: no DSN.** `_shared/sentry.ts` still emits a structured
+  `[craavee] {...}` line to the Supabase log drain regardless, so server
+  failures remain diagnosable without it.
+
+## 18. What this runbook cannot yet do
 
 Stated plainly so nobody assumes otherwise:
 
@@ -551,6 +721,10 @@ Stated plainly so nobody assumes otherwise:
 - **Push delivery itself is unverified.** Phase 10B proved the queue
   drains and the provider answers; nothing has reached a handset, because
   no EAS project or APNs/FCM credentials exist yet.
+- **Real SMS is unverified** and blocked on a provider decision.
+- **Sentry has never ingested an event.**
+- **Razorpay is verified in Test Mode only.** No live key, no real money,
+  no merchant KYC.
 - **PITR is unverified** and probably unavailable on the current plan.
 - **Real SMS, real push, Razorpay and Sentry ingestion remain
   unverified** — none was touched in Phase 10A.
