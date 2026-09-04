@@ -9,7 +9,7 @@ import { useState } from "react";
 import { CaretLeft, CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
 
 import { ago, rupees, shortId, statusTone, ORDER_STATUSES } from "@/lib/admin/format";
-import { EmptyState, ErrorState, Pill, Table, Td, Th, btnClass, fieldClass } from "@/lib/admin/ui";
+import { EmptyState, ErrorState, Pill, Table, Td, Th, btnClass, fieldClass } from "@craavee/ui/ops";
 
 export interface OrderRow {
   id: string;

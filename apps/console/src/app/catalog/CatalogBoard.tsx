@@ -12,7 +12,7 @@ import { rupees } from "@/lib/admin/format";
 import {
   ActionResult, ConfirmDialog, EmptyState, ErrorState, Pill, Table, Td, Th,
   btnClass, btnPrimaryClass, fieldClass,
-} from "@/lib/admin/ui";
+} from "@craavee/ui/ops";
 
 export interface ProductRow {
   id: string; storeId: string; storeName: string;

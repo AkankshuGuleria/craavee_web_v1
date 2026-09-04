@@ -1,0 +1,12 @@
+# The root .gitignore excludes `dist` everywhere, which is right for build
+# output. These two files are different: they are the design tokens in the
+# only forms the build tools can read (CommonJS for the native app's
+# Tailwind v3 config, CSS variables for the web apps' v4 @theme), and
+# neither tool can import TypeScript at config-load time.
+#
+# Committing them means a fresh clone builds with no codegen step. The
+# drift test in src/index.test.ts regenerates both and fails if either is
+# stale, so a committed artefact cannot silently disagree with its source.
+!dist/
+!dist/tailwind.cjs
+!dist/tokens.css

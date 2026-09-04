@@ -18,7 +18,7 @@ import { ArrowsClockwise, Prohibit } from "@phosphor-icons/react";
 
 import { callFn, explain } from "@/lib/admin/callFn";
 import { rupees, shortId } from "@/lib/admin/format";
-import { ActionResult, ConfirmDialog, fieldClass, btnClass, btnPrimaryClass } from "@/lib/admin/ui";
+import { ActionResult, ConfirmDialog, fieldClass, btnClass, btnPrimaryClass } from "@craavee/ui/ops";
 
 export interface ActionContext {
   orderId: string;

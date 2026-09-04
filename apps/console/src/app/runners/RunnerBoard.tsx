@@ -17,8 +17,8 @@ import { callFn, explain } from "@/lib/admin/callFn";
 import { ago, rupees, shortId } from "@/lib/admin/format";
 import {
   ActionResult, ConfirmDialog, EmptyState, ErrorState, Pill, Table, Td, Th,
-  btnClass, fieldClass,
-} from "@/lib/admin/ui";
+  Button, fieldClass,
+} from "@craavee/ui/ops";
 
 export interface RunnerRow {
   id: string;
@@ -118,15 +118,18 @@ export function RunnerBoard({
               <Td className="text-right text-white/70">{r.deliveredThisWeek}</Td>
               <Td className="text-right text-white/70">{r.unsettled > 0 ? rupees(r.unsettled) : "—"}</Td>
               <Td className="text-right">
+                {/* Phase 10D: the shared ops Button rather than a bare
+                    <button> with a pasted class string. It brings the focus
+                    ring, the 44pt minimum target and aria-busy the raw
+                    element did not have. */}
                 {r.job && (
-                  <button
-                    type="button"
-                    className={btnClass}
-                    onClick={() => { setSuccess(null); setError(null); setPending({ from: r, toId: "" }); }}
-                  >
-                    <ArrowsClockwise size={12} weight="bold" className="mr-1 inline" />
-                    Move job
-                  </button>
+                    <Button
+                      onClick={() => { setSuccess(null); setError(null); setPending({ from: r, toId: "" }); }}
+                      title="Move this runner's live job to someone else"
+                    >
+                      <ArrowsClockwise size={12} weight="bold" />
+                      Move job
+                    </Button>
                 )}
               </Td>
             </tr>

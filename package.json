@@ -8,6 +8,7 @@
     "apps/customer-runner",
     "apps/store",
     "apps/console",
+    "packages/tokens",
     "packages/types",
     "packages/validation",
     "packages/api-contracts",

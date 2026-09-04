@@ -15,7 +15,7 @@ import { callFn, explain } from "@/lib/admin/callFn";
 import {
   ActionResult, ConfirmDialog, ErrorState, Pill,
   btnClass, btnPrimaryClass, fieldClass,
-} from "@/lib/admin/ui";
+} from "@craavee/ui/ops";
 
 export interface StoreState {
   id: string;

@@ -8,7 +8,7 @@ import { useState } from "react";
 import { CaretLeft, CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
 
 import { absolute, shortId } from "@/lib/admin/format";
-import { EmptyState, ErrorState, Pill, Table, Td, Th, btnClass, fieldClass } from "@/lib/admin/ui";
+import { EmptyState, ErrorState, Pill, Table, Td, Th, btnClass, fieldClass } from "@craavee/ui/ops";
 
 export interface AuditRow {
   id: string; action: string; entityType: string; entityId: string;
