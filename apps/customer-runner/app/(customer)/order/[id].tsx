@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { Link, Stack, useLocalSearchParams } from "expo-router";
+import { Link, useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import type { PaymentIntent } from "@craavee/api-contracts";
@@ -46,7 +46,6 @@ export default function OrderScreen() {
       // layout is known in advance, so holding it prevents the content
       // jumping into place when the poll lands.
       <View className="flex-1 gap-4 bg-paper px-4 pt-4">
-        <Stack.Screen options={{ title: "Order", headerShown: true }} />
         <SkeletonList rows={3} height={110} />
       </View>
     );
@@ -64,7 +63,6 @@ export default function OrderScreen() {
       // on the screen a customer stares at while waiting for food. The
       // shared ErrorState requires onRetry, so it cannot be built that way.
       <View className="flex-1 bg-paper">
-        <Stack.Screen options={{ title: "Order", headerShown: true }} />
         <ErrorState
           title="Couldn't load this order"
           detail="Your order is safe — this is only the screen failing to refresh."
@@ -98,7 +96,6 @@ export default function OrderScreen() {
 
   return (
     <View className="flex-1 bg-paper">
-      <Stack.Screen options={{ title: "Order", headerShown: true }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {isStale ? (
           <View className="mb-4">

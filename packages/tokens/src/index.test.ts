@@ -75,3 +75,18 @@ test("the generated artefacts are in sync with the source", async () => {
     assert.equal(onDisk, expected, `${rel} is stale — run \`npm run build -w @craavee/tokens\``);
   }
 });
+
+test("legacy class aliases resolve to the same tokens they replaced", async () => {
+  // Phase 10D replaced the native Tailwind theme instead of extending it,
+  // which silently unresolved 163 class usages (`text-inkdeep`,
+  // `bg-paper`, `text-brand-deep`, ...). Tailwind drops unknown classes
+  // without erroring, so nothing failed to build and the screens merely
+  // lost their colours. This pins the shim until those usages migrate.
+  const { craaveeTheme } = await import("./tailwind.ts");
+  const { color } = await import("./index.ts");
+  const c = craaveeTheme("consumer").colors as Record<string, string>;
+  assert.equal(c.paper, color.consumer.bg);
+  assert.equal(c.inkdeep, color.consumer.text);
+  assert.equal(c["brand-deep"], color.consumer.brandStrong);
+  assert.equal(c.mango, color.consumer.accent);
+});

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Link, Stack, router } from "expo-router";
+import { Link, router } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 
 import { rupees } from "../../lib/format";
@@ -89,7 +89,6 @@ export default function CheckoutScreen() {
   if (cart.isEmpty) {
     return (
       <View className="flex-1 items-center justify-center bg-paper px-8">
-        <Stack.Screen options={{ title: "Checkout", headerShown: true }} />
         <Text className="text-sm text-inkdeep/60">Your cart is empty.</Text>
         <Link href="/" className="mt-3 font-semibold text-brand">
           Back to catalog
@@ -102,7 +101,6 @@ export default function CheckoutScreen() {
 
   return (
     <View className="flex-1 bg-paper">
-      <Stack.Screen options={{ title: "Checkout", headerShown: true }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
         {status === "error" && error ? (
           <View
