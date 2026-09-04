@@ -1,15 +1,24 @@
 "use client";
 
-// Shared operational primitives. Built for someone sitting at a laptop
-// scanning for the one row that needs them, not for a marketing page:
-// dense tables, no entrance animations, states that say what happened.
+// Shared operational primitives for the Store and Console. Built for
+// someone sitting at a laptop scanning for the one row that needs them,
+// not for a marketing page: dense tables, no entrance animations, states
+// that say what happened.
 //
-// Every surface in the Console is required to have a designed loading,
-// empty, error and mutation-failure state (Phase 9 §38) — these are the
-// pieces that make that cheap enough to actually do everywhere.
+// Every ops surface is required to have a designed loading, empty, error
+// and mutation-failure state (Phase 9 §38) — these are the pieces that
+// make that cheap enough to actually do everywhere.
+//
+// MOVED HERE IN PHASE 10D. These lived in apps/console/src/lib/admin/ui.tsx
+// and were, in practice, Craavee's real design system: the Console had
+// nine confirm dialogs and ten error states built on them while
+// apps/store had NONE — not one skeleton, empty state, error state or
+// confirmation. That was not a Store oversight; the components were
+// simply somewhere the Store could not import from. Promoting them is a
+// file move, not a rewrite: the implementations are unchanged.
 import { useEffect, useId, useRef, useState } from "react";
 import { Warning, MagnifyingGlass, CheckCircle } from "@phosphor-icons/react";
-import { cn } from "@craavee/ui";
+import { cn } from "../lib/utils";
 
 /* ---------------------------------------------------------------- table */
 
@@ -225,4 +234,57 @@ export function useDebounced<T>(value: T, ms = 250): T {
     return () => clearTimeout(t);
   }, [value, ms]);
   return v;
+}
+
+/* --------------------------------------------------------------- button */
+/**
+ * The ops button.
+ *
+ * `btnClass` / `btnPrimaryClass` existed as raw strings and were pasted
+ * onto bare `<button>` elements, which is how the audit found fourteen
+ * distinct hand-written control styles across the product — several
+ * without a focus ring, and none with a loading state.
+ *
+ * The class constants stay exported for the places that legitimately
+ * style a non-button element, but new work should use this component: it
+ * carries the focus ring, the disabled semantics and `aria-busy` that a
+ * bare element does not.
+ */
+export function Button({
+  children, onClick, type = "button", variant = "secondary",
+  disabled = false, loading = false, className, title,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  type?: "button" | "submit";
+  variant?: "primary" | "secondary" | "danger";
+  disabled?: boolean;
+  loading?: boolean;
+  className?: string;
+  title?: string;
+}) {
+  const inert = disabled || loading;
+  const base =
+    "inline-flex items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold " +
+    "min-h-[44px] transition-colors focus-visible:outline focus-visible:outline-2 " +
+    "focus-visible:outline-offset-2 disabled:opacity-40 disabled:cursor-not-allowed";
+  const tone = {
+    primary: "bg-orange-500/90 text-white hover:bg-orange-500 focus-visible:outline-orange-200",
+    secondary: "bg-white/10 text-white hover:bg-white/15 focus-visible:outline-white/40",
+    danger: "bg-red-500/90 text-white hover:bg-red-500 focus-visible:outline-red-200",
+  }[variant];
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={inert}
+      title={title}
+      aria-busy={loading || undefined}
+      className={cn(base, tone, className)}
+    >
+      {children}
+      {/* Reserved width so the label does not shift when loading starts. */}
+      <span className={loading ? "inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" : "hidden"} />
+    </button>
+  );
 }

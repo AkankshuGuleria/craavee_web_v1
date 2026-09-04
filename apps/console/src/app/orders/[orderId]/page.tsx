@@ -21,7 +21,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RealtimeRefresh } from "@/lib/realtime/RealtimeRefresh";
 import { CONSOLE_NAV } from "@/lib/nav";
 import { absolute, rupees, shortId, statusTone, type OrderStatus } from "@/lib/admin/format";
-import { Pill } from "@/lib/admin/ui";
+import { Pill } from "@craavee/ui/ops";
 
 import { OrderActions, type ActionContext } from "./OrderActions";
 

@@ -18,7 +18,7 @@ import { absolute, rupees, shortId } from "@/lib/admin/format";
 import {
   ActionResult, ConfirmDialog, EmptyState, ErrorState, Pill, Table, Td, Th,
   btnClass, fieldClass,
-} from "@/lib/admin/ui";
+} from "@craavee/ui/ops";
 
 export interface RefundRow {
   id: string; orderId: string; amount: number; reason: string | null;
