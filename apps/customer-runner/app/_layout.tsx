@@ -1,8 +1,13 @@
 import "../global.css";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Stack } from "expo-router";
 import { useState } from "react";
+
+import { PERSIST_BUSTER, PERSIST_MAX_AGE, shouldPersistQuery } from "../lib/query/persist";
 
 import { AuthBoundary } from "../components/AuthBoundary";
 import { ErrorBoundary } from "../components/ErrorBoundary";
@@ -32,14 +37,37 @@ export default function RootLayout() {
             staleTime: 60_000,
             retry: 2,
             refetchOnWindowFocus: false,
+            // gcTime must be >= the persister's maxAge, or the cache is
+            // garbage-collected before the restored entry can be used and
+            // persistence silently does nothing (TanStack persistence docs).
+            gcTime: PERSIST_MAX_AGE,
           },
         },
       })
   );
 
+  const [persister] = useState(() =>
+    createAsyncStoragePersister({
+      storage: AsyncStorage,
+      // AsyncStorage on a busy list can be written to constantly; throttling
+      // keeps the disk write off the interaction path.
+      throttleTime: 2_000,
+    }),
+  );
+
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          maxAge: PERSIST_MAX_AGE,
+          buster: PERSIST_BUSTER,
+          // The allowlist. See lib/query/persist.ts — orders, payments,
+          // profile and addresses are deliberately excluded.
+          dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
+        }}
+      >
         <AuthProvider>
           <AuthBoundary>
             {/* Inside QueryClientProvider because a notification tap
@@ -50,7 +78,7 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }} />
           </AuthBoundary>
         </AuthProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 }
