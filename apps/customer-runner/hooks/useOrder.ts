@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 
+import type { OrderStatus } from "../lib/orders/timeline";
 import { supabase } from "../lib/supabase";
 
 /**
@@ -63,7 +64,7 @@ export type PaymentUiState =
 
 export interface OrderDetail {
   id: string;
-  status: string;
+  status: OrderStatus;
   paymentStatus: PaymentUiState;
   refundedAmount: number;
   subtotal: number;
@@ -72,6 +73,13 @@ export interface OrderDetail {
   walletApplied: number;
   payable: number;
   placedAt: string;
+  /** Real recorded transition times. Null until the transition happens. */
+  confirmedAt: string | null;
+  packedAt: string | null;
+  assignedAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+  cancelledAt: string | null;
   items: { id: string; productId: string; name: string; qty: number; unitPrice: number }[];
 }
 
@@ -108,7 +116,7 @@ export function useOrder(orderId: string | undefined) {
     queryFn: async (): Promise<OrderDetail> => {
       const { data: order, error } = await supabase
         .from("orders")
-        .select("id, status, subtotal, discount, delivery_fee, wallet_applied, payable, placed_at, order_items(id, product_id, qty, unit_price, products(name))")
+        .select("id, status, subtotal, discount, delivery_fee, wallet_applied, payable, placed_at, confirmed_at, packed_at, assigned_at, picked_up_at, delivered_at, cancelled_at, order_items(id, product_id, qty, unit_price, products(name))")
         .eq("id", orderId!)
         .single();
       if (error) throw error;
@@ -129,7 +137,7 @@ export function useOrder(orderId: string | undefined) {
 
       return {
         id: order.id,
-        status: order.status,
+        status: order.status as OrderStatus,
         paymentStatus: ((pay?.status as PaymentUiState) ?? "pending"),
         refundedAmount: (pay?.refunded_amount as number) ?? 0,
         subtotal: order.subtotal,
@@ -138,6 +146,15 @@ export function useOrder(orderId: string | undefined) {
         walletApplied: order.wallet_applied,
         payable: order.payable,
         placedAt: order.placed_at,
+        // Slice CX-F1: the real recorded transition times, for the
+        // timeline. Nothing is inferred and no ETA is derived - the
+        // schema records no promise, so none is shown.
+        confirmedAt: order.confirmed_at ?? null,
+        packedAt: order.packed_at ?? null,
+        assignedAt: order.assigned_at ?? null,
+        pickedUpAt: order.picked_up_at ?? null,
+        deliveredAt: order.delivered_at ?? null,
+        cancelledAt: order.cancelled_at ?? null,
         items: rawItems.map((it) => {
           const prod = (Array.isArray(it.products) ? it.products[0] : it.products) as { name: string } | null;
           return {
