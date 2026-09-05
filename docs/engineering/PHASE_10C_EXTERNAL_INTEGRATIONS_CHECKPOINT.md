@@ -1,5 +1,45 @@
 # Phase 10C — External Integrations
 
+---
+
+## 0.1 Correction (2026-09-05) — the `adb` claim in this document was wrong
+
+This checkpoint stated in two places that **"`adb` is not installed."** That
+was incorrect.
+
+`adb` **is** installed, at:
+
+```
+~/Library/Android/sdk/platform-tools/adb
+```
+
+It is simply **not on `PATH`**, so a bare `adb` invocation returns
+`adb not found`. I concluded absence from that failure without checking the
+SDK location. Verified on 2026-09-05: Android Debug Bridge 1.0.41,
+platform-tools 37.0.1.
+
+**What this does and does not change.** It does not change any Razorpay,
+Sentry, SMS or EAS conclusion in this document — those were blocked on
+credentials and provider decisions, not on tooling. It does mean the
+*stated reason* for the handset blockers was partly wrong: the real and
+sufficient blocker was that **no physical device was attached**, which was
+true at the time.
+
+Android's own row is also superseded. "Android against staging — BLOCKED,
+needs a development build, i.e. EAS" conflated two things: Expo Go could not
+run the app, and EAS was assumed to be the only route to a development
+build. A **local** `npx expo run:android` build needs no EAS. See
+`PHASE_10E_CUSTOMER_EXPERIENCE_CHECKPOINT.md` for the current status.
+
+Device identification note: the phone reports `ro.product.model=V2250` and
+`ro.product.name=V2250i`. It exposes **no** marketing-name property
+(`ro.vivo.market.name` is empty), so any "vivo V29" label is the owner's
+identification, not the device's self-report. Measured values are used
+throughout.
+
+---
+
+
 **Branch:** `feat/external-integrations-10c`
 **Base `main`:** `68e87d1623322b79eb3637f40178951fba425c62`
 **Date:** 2026-09-04
@@ -26,7 +66,7 @@ Status vocabulary, used strictly and never blurred:
 | **Android against staging** | **BLOCKED** | App cannot start in Expo Go — needs a development build, i.e. EAS |
 | **Sentry** | **BLOCKED** | No DSN supplied |
 | **EAS / push credentials** | **BLOCKED** | No Expo token; no `eas.json`; no `extra.eas.projectId` |
-| **Real handset push** | **BLOCKED** | No physical device attached (0 iOS, no `adb`) |
+| **Real handset push** | **BLOCKED** | No physical device attached (0 iOS). ~~no `adb`~~ — **corrected 2026-09-05, see §0.1** |
 | **Notification tap** | **BLOCKED** | Depends on the above |
 | **Real SMS OTP** | **BLOCKED** | **No provider has been chosen in any authoritative document** |
 
@@ -326,7 +366,7 @@ installed on the host.
 |---|---|
 | **Sentry** | A staging DSN. Nothing was configured; **no event has ever been ingested.** |
 | **EAS / push credentials** | An Expo account or `EXPO_TOKEN`. There is still no `eas.json` and no `expo.extra.eas.projectId`, so `getExpoPushTokenAsync()` cannot mint a token. |
-| **Real handset push** | A physical device. `xcrun devicectl` lists **0**; `adb` is not installed. §14/§15 require a real handset, and a simulator does not substitute. |
+| **Real handset push** | A physical device. `xcrun devicectl` lists **0**. (~~`adb` is not installed~~ — **incorrect, corrected 2026-09-05; see §0.1**.) §14/§15 require a real handset, and a simulator does not substitute. |
 | **Notification tap** | Depends on the above. |
 | **Real SMS** | **A provider decision.** No authoritative document names one — the docs list Twilio/MessageBird/Textlocal/Vonage as options. Per §10 and §18 none was invented. Staging still uses fixed test OTPs. |
 

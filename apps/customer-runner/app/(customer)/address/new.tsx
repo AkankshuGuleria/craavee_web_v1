@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Stack, router } from "expo-router";
+import { router } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { useCreateAddress, useZones } from "../../../hooks/useAddresses";
@@ -47,7 +47,6 @@ export default function NewAddressScreen() {
 
   return (
     <View className="flex-1 bg-paper">
-      <Stack.Screen options={{ title: "New address", headerShown: true }} />
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-inkdeep/50">Zone</Text>
         {zones.isPending ? (

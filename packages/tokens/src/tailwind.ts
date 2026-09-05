@@ -43,6 +43,24 @@ export function craaveeTheme(surface: "consumer" | "ops" = "consumer") {
       "info-soft": c.infoSoft,
       skeleton: c.skeleton,
       overlay: c.overlay,
+
+      // ---- Legacy aliases -------------------------------------------
+      // Phase 10D replaced this theme wholesale rather than extending it,
+      // which silently unresolved 163 class usages across the native app
+      // (`text-inkdeep` x76, `bg-paper` x20, `text-brand-deep` x14, ...).
+      // Tailwind drops unknown classes without erroring, so nothing failed
+      // to build and the screens merely lost their colours - the exact
+      // silent visual regression this system exists to prevent.
+      //
+      // These aliases point the old names at the same tokens, so the
+      // product is correct today and screens migrate to the semantic names
+      // as they are touched. They are a migration shim, not vocabulary:
+      // new work uses `text`, `bg`, `brand`, `accent`.
+      paper: c.bg,
+      inkdeep: c.text,
+      "brand-deep": c.brandStrong,
+      mango: c.accent,
+      cream: c.surfaceAlt,
     },
     spacing: mapPx(space as unknown as Record<string, number>),
     borderRadius: mapPx(radius as unknown as Record<string, number>),

@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 
-import { Link, Stack, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { Link, useLocalSearchParams } from "expo-router";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import type { PaymentIntent } from "@craavee/api-contracts";
 
+import { ErrorState, SkeletonList, StaleBanner, StatusPill } from "../../../components/ui";
 import { rupees } from "../../../lib/format";
 import { useOrder } from "../../../hooks/useOrder";
 import { usePaymentCheckout } from "../../../hooks/usePaymentCheckout";
@@ -41,21 +42,32 @@ export default function OrderScreen() {
 
   if (order.isPending) {
     return (
-      <View className="flex-1 items-center justify-center bg-paper">
-        <Stack.Screen options={{ title: "Order", headerShown: true }} />
-        <ActivityIndicator />
+      // A skeleton shaped like the order card, not a bare spinner: the
+      // layout is known in advance, so holding it prevents the content
+      // jumping into place when the poll lands.
+      <View className="flex-1 gap-4 bg-paper px-4 pt-4">
+        <SkeletonList rows={3} height={110} />
       </View>
     );
   }
 
-  if (order.isError || !order.data) {
+  // Only a full failure with NOTHING to show gets the error page. The
+  // original condition was `order.isError || !order.data`, which threw
+  // away perfectly good cached data the moment one poll failed - on a
+  // screen that polls every 8 seconds. A transient failure with data in
+  // hand is a STALE state, handled below, not a dead end.
+  if (!order.data) {
     return (
-      <View className="flex-1 items-center justify-center gap-2 bg-paper px-8">
-        <Stack.Screen options={{ title: "Order", headerShown: true }} />
-        <Text className="text-sm text-inkdeep/60">We couldn't load this order.</Text>
-        <Link href="/" className="font-semibold text-brand">
-          Back to catalog
-        </Link>
+      // Phase 10E: this was the audit's P0. It read "We couldn't load this
+      // order." with a link back to the catalog and NO way to try again -
+      // on the screen a customer stares at while waiting for food. The
+      // shared ErrorState requires onRetry, so it cannot be built that way.
+      <View className="flex-1 bg-paper">
+        <ErrorState
+          title="Couldn't load this order"
+          detail="Your order is safe — this is only the screen failing to refresh."
+          onRetry={() => order.refetch()}
+        />
       </View>
     );
   }
@@ -75,10 +87,29 @@ export default function OrderScreen() {
         ? { title: "Order confirmed", body: refunded ? `A ${rupees(o.refundedAmount)} refund was credited to your wallet.` : "The store will start packing shortly." }
         : { title: "Payment pending", body: "Complete your payment to confirm the order. We're checking with the gateway…" };
 
+  // Phase 10E: the audit's second P0. This screen is poll-driven (D20) and
+  // had no concept of a failed poll - a lost connection left the last
+  // status on screen indefinitely, presented as current. `isError` with
+  // cached data present is exactly that case: we still have something to
+  // show, but it is no longer known to be true.
+  const isStale = order.isError;
+
   return (
     <View className="flex-1 bg-paper">
-      <Stack.Screen options={{ title: "Order", headerShown: true }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        {isStale ? (
+          <View className="mb-4">
+            <StaleBanner kind="stale" onRetry={() => order.refetch()} />
+          </View>
+        ) : null}
+
+        {/* One status vocabulary across the product: the same pill and the
+            same tone mapping the Console uses, rather than a second set of
+            words for the same nine states. */}
+        <View className="mb-3">
+          <StatusPill status={o.status} testID="order-status" />
+        </View>
+
         <View
           className={`mb-4 rounded-2xl p-4 ${
             confirmed && !refunded ? "bg-brand/10" : failed || cancelled ? "bg-mango/10" : "bg-white border border-inkdeep/10"

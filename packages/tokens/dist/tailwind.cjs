@@ -26,7 +26,12 @@ module.exports = {
       "info": "#2563a8",
       "info-soft": "#e4eef9",
       "skeleton": "rgba(18, 32, 25, 0.07)",
-      "overlay": "rgba(13, 23, 18, 0.45)"
+      "overlay": "rgba(13, 23, 18, 0.45)",
+      "paper": "#f3f5ec",
+      "inkdeep": "#122019",
+      "brand-deep": "#0e2a1d",
+      "mango": "#ff8a3d",
+      "cream": "#fff9ef"
     },
     "spacing": {
       "none": "0px",
@@ -177,7 +182,12 @@ module.exports = {
       "info": "#60a5fa",
       "info-soft": "rgba(96, 165, 250, 0.14)",
       "skeleton": "rgba(255, 255, 255, 0.06)",
-      "overlay": "rgba(5, 7, 10, 0.66)"
+      "overlay": "rgba(5, 7, 10, 0.66)",
+      "paper": "#0a0c10",
+      "inkdeep": "#f4f6f9",
+      "brand-deep": "#48c184",
+      "mango": "#ff8a3d",
+      "cream": "#181c23"
     },
     "spacing": {
       "none": "0px",

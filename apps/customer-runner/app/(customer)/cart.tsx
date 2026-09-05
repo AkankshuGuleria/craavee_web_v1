@@ -1,4 +1,4 @@
-import { Link, Stack, router } from "expo-router";
+import { Link, router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { useCartStore } from "../../lib/cart/store";
@@ -21,7 +21,6 @@ export default function CartScreen() {
   if (cart.isEmpty) {
     return (
       <View className="flex-1 items-center justify-center gap-3 bg-paper px-8">
-        <Stack.Screen options={{ title: "Cart", headerShown: true }} />
         <Text className="text-lg font-semibold text-brand-deep">Your cart is empty</Text>
         <Text className="text-center text-sm text-inkdeep/60">Add something from the catalog to get started.</Text>
         <Link href="/" asChild>
@@ -37,7 +36,6 @@ export default function CartScreen() {
 
   return (
     <View className="flex-1 bg-paper">
-      <Stack.Screen options={{ title: "Cart", headerShown: true }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 140 }}>
         {hasProblems ? (
           <View className="mb-4 rounded-xl border border-mango/40 bg-mango/10 p-3">
