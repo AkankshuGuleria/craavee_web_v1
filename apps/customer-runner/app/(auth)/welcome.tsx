@@ -104,14 +104,30 @@ export default function WelcomeScreen() {
           </Link>
 
           {/*
-            Deliberately no "Continue with Google" and no "Sign in with
-            password". Neither is configured or supported in this auth
-            model, and a control that cannot work is worse than its
-            absence. When Google is configured on the Supabase project, it
-            belongs directly beneath this button.
-          */}
+            Still deliberately NO "Continue with Google": there is no
+            `[auth.external.google]` block on the Supabase project, so the
+            button would open nothing. It belongs directly beneath the
+            primary action once configured.
 
-          <Text className="mt-4 text-center text-xs leading-4 text-inkdeep/45">
+            "Sign in" IS here now, because phone+password is real and
+            verified against staging. It sits below the primary action and
+            in quieter type on purpose - a password only exists if the
+            customer chose to set one, so leading with it would ask a
+            question most people cannot answer yet.
+          */}
+          <Link href="/(auth)/password" asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sign in with a password"
+              accessibilityHint="For accounts that have set a password"
+              testID="welcome-sign-in"
+              className="mt-3 min-h-[48px] items-center justify-center"
+            >
+              <Text className="text-sm font-semibold text-brand">Sign in with a password</Text>
+            </Pressable>
+          </Link>
+
+          <Text className="mt-3 text-center text-xs leading-4 text-inkdeep/45">
             We'll send a one-time code to verify your number.
           </Text>
         </View>

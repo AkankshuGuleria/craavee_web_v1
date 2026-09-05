@@ -56,6 +56,7 @@ export default function CustomerLayout() {
       {/* Slice 3. Browse owns its title dynamically (the selected
           category), so it sets it from the screen rather than here. */}
       <Stack.Screen name="browse" options={{ title: "Browse", headerShown: true }} />
+      <Stack.Screen name="set-password" options={{ title: "Password", headerShown: true }} />
       <Stack.Screen
         name="product/[id]"
         options={{ title: "Product", headerShown: true }}

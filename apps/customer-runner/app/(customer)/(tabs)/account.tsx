@@ -129,7 +129,17 @@ export default function AccountScreen() {
         </Text>
         <View className="overflow-hidden rounded-2xl border border-inkdeep/10 bg-white">
           <Row label="Your orders" hint="Track and review past orders" href="/orders" testID="account-orders" />
-          <Row label="Add an address" hint="Where we deliver" href="/address/new" testID="account-address" last />
+          <Row label="Add an address" hint="Where we deliver" href="/address/new" testID="account-address" />
+          {/* Real, and verified against staging: enrolling a password here
+              applies it to the SAME auth identity, so it is a second way to
+              prove who you are rather than a second account. */}
+          <Row
+            label="Password"
+            hint="Set or change your sign-in password"
+            href="/set-password"
+            testID="account-password"
+            last
+          />
         </View>
 
         {/* Deliberately absent, and why - see the header comment:
