@@ -19,7 +19,23 @@ import { useCartStore } from "../../lib/cart/store";
 import { rupees } from "../../lib/format";
 import { useCart } from "../../hooks/useCart";
 
-export function CartBar({ testID = "cart-fab" }: { testID?: string }) {
+/**
+ * `aboveTabBar` lifts the bar clear of the root tab bar.
+ *
+ * It is an explicit prop rather than `useBottomTabBarHeight()` because
+ * this component is used on BOTH sides of the navigator: Home sits inside
+ * the tabs, while browse, search and product detail present over them in
+ * the parent Stack, where that hook throws. An explicit flag makes the
+ * two cases visible at the call site instead of failing at runtime on
+ * half the screens.
+ */
+export function CartBar({
+  testID = "cart-fab",
+  aboveTabBar = false,
+}: {
+  testID?: string;
+  aboveTabBar?: boolean;
+}) {
   const items = useCartStore((s) => s.items);
   const cart = useCart();
   const count = cartCount(items);
@@ -29,7 +45,7 @@ export function CartBar({ testID = "cart-fab" }: { testID?: string }) {
   return (
     // The screen excludes the bottom safe-area edge precisely so this bar
     // can own its own inset and sit flush with the home indicator.
-    <View className="absolute inset-x-0 bottom-0 px-4 pb-8">
+    <View className={`absolute inset-x-0 bottom-0 px-4 ${aboveTabBar ? "pb-[76px]" : "pb-8"}`}>
       <Link href="/cart" asChild>
         <Pressable
           accessibilityRole="button"

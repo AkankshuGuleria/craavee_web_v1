@@ -92,16 +92,16 @@ Every customer capability, with an unambiguous status. No "mostly", no
 | Order detail amounts + items | **DONE** | |
 | Delivery code flow | **DONE** | D14 preserved |
 | **Reorder** | **BLOCKED** | Needs availability-checked partial-success path |
-| **Refund visibility** | **PARTIAL** | Wallet-only refunds (D38) happen; refund *history* has no UI |
+| **Refund visibility** | **DONE** | Wallet ledger shows real refund credits. This was the point: a wallet-only refund the customer cannot see is indistinguishable from no refund |
 | **Support** | **MISSING (BE)** | No ticket/thread table. Framework proposed §5.2; **not built** |
 
 ## Account
 
 | Capability | Status | Notes |
 |---|---|---|
-| **Account screen** | **MISSING (FE)** | No hub exists |
-| Profile view/edit | **MISSING (FE)** | `profiles` supports it |
-| Wallet balance + ledger | **MISSING (FE)** | `wallet_ledger` readable by RLS today |
+| **Account screen** | **DONE** | Identity, wallet, ledger, destinations, sign out |
+| Profile view | **DONE** | Name + phone. **Editing still MISSING (FE)** — a form, its own slice |
+| Wallet balance + ledger | **DONE** | Balance from `profiles.wallet_balance`; 20 most recent movements |
 | Notification preferences | **MISSING (BE)** | No preference column |
 
 ## Cross-cutting
@@ -110,6 +110,7 @@ Every customer capability, with an unambiguous status. No "mostly", no
 |---|---|---|
 | Offline / stale handling | **PARTIAL** | Stale banners + retry everywhere; no `NetInfo`/`onlineManager` |
 | Query persistence | **DONE** | Allowlist — catalog only, never orders/payments/profile |
+| Root navigation | **DONE** | 3 tabs — Home / Orders / Account. Cart stays contextual |
 | Deep links | **PARTIAL** | Routes exist and are auth-gated; not systematically tested |
 | Push notifications | **BLOCKED** | Dispatcher works; no EAS `projectId` ⇒ no token can be minted |
 | Accessibility | **PARTIAL** | Strong on shipped surfaces; `address/new` still has **0** a11y props |
@@ -121,7 +122,7 @@ Every customer capability, with an unambiguous status. No "mostly", no
 
 | Blocker | Before | After |
 |---|---|---|
-| B20 — no order history | Open | **Closed (frontend)** |
+| B20 — no order history **and no account screen** | Open | **Closed (frontend)** |
 
 Still open: B4 real SMS, B5 push, B6 load tests, B8 `address/new` accessibility, B9 real-handset push.
 
@@ -129,6 +130,6 @@ Still open: B4 real SMS, B5 push, B6 load tests, B8 `address/new` accessibility,
 
 ## The honest one-line summary
 
-Craavee can **discover, buy and now remember**. It cannot yet **save for
-later, ask for help, or manage an account** — and two of those three need
-a schema decision that has been written up rather than taken unilaterally.
+Craavee can **discover, buy, remember and account for itself**. It cannot
+yet **save for later or ask for help** — and both need a schema decision
+that has been written up rather than taken unilaterally.

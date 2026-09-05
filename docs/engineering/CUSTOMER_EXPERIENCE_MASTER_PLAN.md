@@ -63,14 +63,94 @@ what follows are structural patterns and principles.
 
 ### 1.5 Craavee's own principles, derived from the above
 
-1. **Availability truth before commitment** — never let a customer invest attention in something they cannot have.
-2. **The order is the unit of post-purchase.** Tracking, support and refunds all hang off an order, not off separate silos.
-3. **Support is organised by problem, never by channel or department.**
-4. **Every list is a retrieval problem** once it is longer than a screen.
-5. **Say what is actually known.** No fabricated ETA, popularity, or ranking. Where we do not know, say so.
-6. **Fewer, calmer surfaces.** Craavee has a fraction of Amazon's capability surface and should look like it, not imitate density it does not have.
+The brief asks for at least twenty. These are principles, not
+implementations — each one is a decision rule that outlives the screen it
+came from.
 
----
+**Navigation and structure**
+
+1. **A tab earns its place by being a destination customers return to
+   across sessions.** Craavee has three; inventing a fourth to fill a bar
+   is how navigation becomes furniture.
+2. **Persistent destinations for recurring jobs; contextual affordances
+   for momentary ones.** The cart is ninety seconds of a visit — it gets a
+   bar that appears when it matters, not permanent real estate.
+3. **Never stack competing navigation systems on one screen.** Tabs *and*
+   category tabs *and* a banner carousel is three products fighting.
+4. **Search is an action, not a place.** It gets a prominent entry and its
+   own screen, not a tab.
+5. **Let customers browse by intent before forcing them into a list.**
+
+**Truth and trust**
+
+6. **Availability truth before commitment.** Never let a customer invest
+   attention in something they cannot have.
+7. **Say what is known; say nothing where nothing is known.** No ETA
+   without an SLA, no "nearby" without location.
+8. **An invented estimate is the most damaging fabrication in delivery,**
+   because the customer plans around it.
+9. **Make invisible policy visible.** A wallet-only refund that the
+   customer cannot see is indistinguishable from no refund.
+10. **The server owns money.** The client renders it and never decides it.
+11. **A control that appears to work and does nothing is worse than an
+    absent control.** (Hence: no discount filter when everything is
+    discounted.)
+
+**Discovery**
+
+12. **Classification is only as deep as the data.** One real level beats
+    two invented ones.
+13. **Every list becomes a retrieval problem** once it is longer than a
+    screen — filtering and pagination are not "later".
+14. **Filter options must be able to match something.** Facets scope to
+    the current context.
+15. **Show the result count.** It turns filtering from a guess into a
+    conversation.
+16. **Narrowing must be reversible in one tap** — chips, not just a badge.
+
+**Post-purchase**
+
+17. **The order is the unit of post-purchase.** Tracking, support and
+    refunds hang off it, never in separate silos.
+18. **Support is organised by the customer's problem, not our org chart,
+    and never by channel first.**
+19. **Active work outranks history.** What you are waiting on now must
+    never scroll away beneath what you bought last month.
+
+**Craft**
+
+20. **Recovery is part of every screen.** Loading, empty, error, retry,
+    stale — a dead end is a defect, not a gap.
+21. **Never present stale data as fresh.**
+22. **State should live where navigation already persists it** — route
+    params — rather than in bespoke save/restore code.
+23. **Fewer, calmer surfaces.** Not everything is a card; not everything
+    needs a border.
+24. **Motion serves continuity and feedback, never decoration** — and must
+    never make an interaction feel slower.
+25. **Haptics mark committed change, not every tap.**
+26. **Colour is never the only signal.**
+
+### 1.6 Patterns explicitly REJECTED
+
+Studied, understood, and deliberately not adopted — with the reason, so
+nobody re-adopts them by reflex.
+
+| Pattern | Seen in | Why Craavee rejects it |
+|---|---|---|
+| Tile-grid account screen | Amazon | Works at fifty capabilities, actively worse at five — it turns "sign out" into a scanning exercise. Craavee uses a short list. |
+| Four- or five-tab bottom bar | Blinkit, others | Craavee has three genuine recurring destinations. A fourth tab would have to be invented. |
+| Cart as a permanent tab | Most | Duplicates the contextual cart bar and shows a dimmed, empty icon on every screen for most of a visit. |
+| Promotional density on Home | Blinkit | Merchandising competing with products. Craavee has no promotional data to show and would not fill Home with it if it did. |
+| Channel-first support | Tata CLiQ | Makes the customer choose a phone number or email before describing the problem. Problem first. |
+| Deep self-service trees | Amazon | Long path from "problem with this order" to help about that specific thing. |
+| Personalised recommendation rails | All four | Craavee records no view history, purchase history or popularity. Building the rail would mean inventing the signal. |
+| Ratings and reviews | All four | No review data, no moderation, no operational owner. |
+| Infinite promotional carousels | Several | Motion without information. |
+
+**The line being drawn:** every rejection above is either *we do not have
+the data* or *it is right for their scale and wrong for ours*. None is
+"we could not build it".
 
 ## 2. Complete customer journey
 
