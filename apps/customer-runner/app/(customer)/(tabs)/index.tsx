@@ -32,16 +32,15 @@ import { Link, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { CartBar } from "../../components/discovery/CartBar";
-import { CategoryRail } from "../../components/discovery/CategoryRail";
-import { EmptyState, ErrorState, Screen, SkeletonList } from "../../components/ui";
-import { ProductCard } from "../../components/catalog/ProductCard";
-import { useAuth } from "../../lib/auth/AuthProvider";
-import { useCartStore } from "../../lib/cart/store";
-import { cartCount } from "../../lib/cart/logic.ts";
-import { type CatalogProduct, useCatalog } from "../../hooks/useCatalog";
-import { useFacets } from "../../hooks/useFacets";
-import { useProfile } from "../../hooks/useProfile";
+import { CartBar } from "../../../components/discovery/CartBar";
+import { CategoryRail } from "../../../components/discovery/CategoryRail";
+import { EmptyState, ErrorState, Screen, SkeletonList } from "../../../components/ui";
+import { ProductCard } from "../../../components/catalog/ProductCard";
+import { useCartStore } from "../../../lib/cart/store";
+import { cartCount } from "../../../lib/cart/logic.ts";
+import { type CatalogProduct, useCatalog } from "../../../hooks/useCatalog";
+import { useFacets } from "../../../hooks/useFacets";
+import { useProfile } from "../../../hooks/useProfile";
 
 /** How many products a home section shows before "See all". */
 const SECTION_LIMIT = 4;
@@ -76,7 +75,6 @@ function buildRows(products: CatalogProduct[]): Row[] {
 
 export default function CustomerHome() {
   const router = useRouter();
-  const { signOut } = useAuth();
   const { data: profile } = useProfile();
   const catalog = useCatalog();
   const facets = useFacets();
@@ -129,41 +127,16 @@ export default function CustomerHome() {
     // against one simulator's status bar and is wrong on any device with a
     // different inset, and wrong again in landscape.
     <Screen padded={false} edges={["top"]}>
-      <View className="flex-row items-center justify-between px-4 pb-3">
-        <View className="flex-1">
-          <Text className="text-2xl font-bold text-brand-deep">Craavee</Text>
-          {profile?.full_name ? (
-            <Text className="text-sm text-inkdeep/55" numberOfLines={1}>
-              Hi, {profile.full_name}
-            </Text>
-          ) : null}
-        </View>
-        {/* Interim entry point. The master plan proposes a root tab bar
-            (Home / Orders / Account); that changes navigation for every
-            screen and belongs in its own reviewable slice, so orders is
-            reachable from here in the meantime. */}
-        <Link href="/orders" asChild>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Your orders"
-            accessibilityHint="Opens your order history and tracking"
-            testID="orders-entry"
-            hitSlop={8}
-            className="min-h-[44px] shrink-0 items-center justify-center px-3"
-          >
-            <Text className="text-sm font-semibold text-brand">Orders</Text>
-          </Pressable>
-        </Link>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Log out"
-          onPress={() => signOut()}
-          testID="logout-button"
-          hitSlop={8}
-          className="min-h-[44px] shrink-0 items-center justify-center px-3"
-        >
-          <Text className="text-sm font-semibold text-brand">Log out</Text>
-        </Pressable>
+      {/* Orders and Sign out moved to the tab bar and the Account tab.
+          A header that accumulates one text link per capability is how a
+          screen ends up with five, none of them prominent. */}
+      <View className="px-4 pb-3">
+        <Text className="text-2xl font-bold text-brand-deep">Craavee</Text>
+        {profile?.full_name ? (
+          <Text className="text-sm text-inkdeep/55" numberOfLines={1}>
+            Hi, {profile.full_name}
+          </Text>
+        ) : null}
       </View>
 
       {catalog.isPending ? (
@@ -240,14 +213,14 @@ export default function CustomerHome() {
               </View>
             )
           }
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: count > 0 ? 104 : 24 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: count > 0 ? 172 : 92 }}
           onRefresh={() => catalog.refetch()}
           refreshing={catalog.isFetching && !catalog.isPending}
           testID="catalog-list"
         />
       )}
 
-      <CartBar />
+      <CartBar aboveTabBar />
     </Screen>
   );
 }

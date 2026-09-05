@@ -13,15 +13,15 @@
  * the urgent case scroll away as history accumulates.
  */
 import { FlashList } from "@shopify/flash-list";
-import { Link, Stack } from "expo-router";
+import { Link } from "expo-router";
 import { useMemo } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
-import { EmptyState, ErrorState, Screen, SkeletonList, StatusPill } from "../../components/ui";
-import { rupees } from "../../lib/format";
-import { isTerminal } from "../../lib/orders/timeline";
-import { flattenOrders, useOrders, type OrderSummary } from "../../hooks/useOrders";
-import { theme } from "../../lib/theme";
+import { EmptyState, ErrorState, Screen, SkeletonList, StatusPill } from "../../../components/ui";
+import { rupees } from "../../../lib/format";
+import { isTerminal } from "../../../lib/orders/timeline";
+import { flattenOrders, useOrders, type OrderSummary } from "../../../hooks/useOrders";
+import { theme } from "../../../lib/theme";
 
 type Row =
   | { kind: "header"; key: string; label: string }
@@ -63,7 +63,9 @@ export default function OrdersScreen() {
 
   return (
     <Screen padded={false} edges={["top"]}>
-      <Stack.Screen options={{ title: "Your orders" }} />
+      <Text accessibilityRole="header" className="px-4 pb-2 text-2xl font-bold text-brand-deep">
+        Your orders
+      </Text>
 
       {feed.isPending ? (
         <View className="px-4 pt-2">
@@ -108,7 +110,7 @@ export default function OrdersScreen() {
               <OrderRow order={row.order} />
             )
           }
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 96 }}
           onRefresh={() => feed.refetch()}
           refreshing={feed.isFetching && !feed.isPending && !feed.isFetchingNextPage}
           onEndReached={() => {

@@ -36,7 +36,10 @@ const header = {
 export default function CustomerLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, ...header }}>
-      <Stack.Screen name="index" options={{ title: "Craavee" }} />
+      {/* The tab bar is the root. Everything below presents OVER it,
+          which is the native convention on both platforms and keeps the
+          back stack honest. */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="cart"
         options={{ title: "Your cart", headerShown: true, presentation: "card" }}
@@ -53,7 +56,6 @@ export default function CustomerLayout() {
       {/* Slice 3. Browse owns its title dynamically (the selected
           category), so it sets it from the screen rather than here. */}
       <Stack.Screen name="browse" options={{ title: "Browse", headerShown: true }} />
-      <Stack.Screen name="orders" options={{ title: "Your orders", headerShown: true }} />
       <Stack.Screen
         name="product/[id]"
         options={{ title: "Product", headerShown: true }}
