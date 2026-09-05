@@ -138,6 +138,22 @@ export default function CustomerHome() {
             </Text>
           ) : null}
         </View>
+        {/* Interim entry point. The master plan proposes a root tab bar
+            (Home / Orders / Account); that changes navigation for every
+            screen and belongs in its own reviewable slice, so orders is
+            reachable from here in the meantime. */}
+        <Link href="/orders" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Your orders"
+            accessibilityHint="Opens your order history and tracking"
+            testID="orders-entry"
+            hitSlop={8}
+            className="min-h-[44px] shrink-0 items-center justify-center px-3"
+          >
+            <Text className="text-sm font-semibold text-brand">Orders</Text>
+          </Pressable>
+        </Link>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Log out"
