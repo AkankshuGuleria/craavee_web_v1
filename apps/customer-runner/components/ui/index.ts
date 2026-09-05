@@ -2,3 +2,6 @@ export { Screen } from "./Screen";
 export { Button } from "./Button";
 export { Skeleton, SkeletonList, LoadingState, EmptyState, ErrorState, StaleBanner } from "./States";
 export { StatusPill } from "./StatusPill";
+export { ProductImage } from "./ProductImage";
+export { QtyStepper } from "./QtyStepper";
+export { Price, StruckPrice } from "./Price";
