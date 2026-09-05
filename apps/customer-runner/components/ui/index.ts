@@ -5,3 +5,4 @@ export { StatusPill } from "./StatusPill";
 export { ProductImage } from "./ProductImage";
 export { QtyStepper } from "./QtyStepper";
 export { Price, StruckPrice } from "./Price";
+export { CartAction } from "./CartAction";

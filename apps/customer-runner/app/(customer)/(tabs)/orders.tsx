@@ -150,7 +150,9 @@ function OrderRow({ order }: { order: OrderSummary }) {
         accessibilityLabel={`Order from ${shortDate(order.placedAt)}, ${summary}, ${rupees(
           order.payable,
         )}${paidByWallet ? ", paid by wallet" : ""}`}
-        accessibilityHint="Opens order details and tracking"
+        accessibilityHint={
+          isTerminal(order.status) ? "Opens order details" : "Opens order details and tracking"
+        }
         testID={`order-row-${order.id}`}
         style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         className="mb-3 rounded-2xl border border-inkdeep/10 bg-white p-4"
@@ -167,10 +169,16 @@ function OrderRow({ order }: { order: OrderSummary }) {
               {rupees(order.payable)}
             </Text>
             {paidByWallet ? (
-              // Without this a wallet-covered order shows a bare "₹0.00"
-              // and reads as broken. It is accurate - that IS what was
-              // charged - it just needs saying why.
-              <Text className="pr-1 text-[10px] text-inkdeep/45">Paid by wallet</Text>
+              // "Wallet", not "Paid by wallet". The column is sized by the
+              // amount above it and the longer label did not fit: it first
+              // hard-clipped to "Paid by", then ellipsised to "Paid by
+              // wall…" - both worse than the bare ₹0.00 the label exists to
+              // explain. Directly beneath "₹0.00", one word is unambiguous
+              // and cannot clip at any width. The full phrasing survives in
+              // the accessibility label, where there is no width limit.
+              <Text className="shrink-0 pr-1 text-[10px] text-inkdeep/45" numberOfLines={1}>
+                Wallet
+              </Text>
             ) : null}
           </View>
         </View>
@@ -179,7 +187,15 @@ function OrderRow({ order }: { order: OrderSummary }) {
           {/* The same pill and tone mapping the rest of the product uses,
               rather than a second status vocabulary for the same states. */}
           <StatusPill status={order.status} testID={`order-status-${order.id}`} />
-          <Text className="shrink-0 pl-2 text-xs font-semibold text-brand">Track</Text>
+          {/* The action has to match the order's actual state. "Track" on a
+              cancelled or failed order promises live progress that will
+              never arrive - the tracking screen for a terminal order has
+              nothing to track. Terminal orders get "Details", which is what
+              the screen genuinely offers: items, amounts and what
+              happened. */}
+          <Text className="shrink-0 pl-2 text-xs font-semibold text-brand">
+            {isTerminal(order.status) ? "Details" : "Track"}
+          </Text>
         </View>
       </Pressable>
     </Link>
