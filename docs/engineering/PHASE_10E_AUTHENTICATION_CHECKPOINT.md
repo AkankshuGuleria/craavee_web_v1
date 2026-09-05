@@ -154,11 +154,11 @@ with it would ask a question most people cannot answer yet.
 | Entry screen | PASS (prev) | UNVERIFIED | UNVERIFIED | PASS |
 | Phone OTP (test OTP) | PASS (prev) | PASS (prev) | PASS (prev) | PASS |
 | **Real SMS OTP** | **BLOCKED** | BLOCKED | BLOCKED | **BLOCKED** |
-| **Password enrolment** | *see §9* | UNVERIFIED | UNVERIFIED | **PASS (probe)** |
-| **Password sign-in** | *see §9* | UNVERIFIED | UNVERIFIED | **PASS (probe)** |
+| **Password enrolment** | **PASS** | UNVERIFIED | UNVERIFIED | **PASS** |
+| **Password sign-in** | **PASS** | UNVERIFIED | UNVERIFIED | **PASS** |
 | **Password token carries role** | — | — | — | **PASS (probe)** |
-| **Wrong password rejected** | *see §9* | UNVERIFIED | UNVERIFIED | **PASS (probe)** |
-| **Recovery via code** | *see §9* | UNVERIFIED | UNVERIFIED | PASS |
+| **Wrong password rejected** | **PASS** | UNVERIFIED | UNVERIFIED | **PASS** |
+| **Recovery via code** | **PASS** | UNVERIFIED | UNVERIFIED | PASS |
 | Username sign-in | **BLOCKED** | BLOCKED | BLOCKED | BLOCKED |
 | Google | **BLOCKED** | BLOCKED | BLOCKED | BLOCKED |
 | Signup (genuinely new user) | **UNVERIFIED** | UNVERIFIED | UNVERIFIED | UNVERIFIED |
@@ -173,40 +173,78 @@ marked PASS because a screen rendered.
 Per §52 the distinction is kept explicit:
 
 - **Phone OTP UI:** IMPLEMENTED · **SMS provider:** BLOCKED · **Real SMS delivery:** UNVERIFIED
-- **Password UI:** IMPLEMENTED · **Password mechanism:** VERIFIED on staging · **Password on device:** see §9
+- **Password UI:** IMPLEMENTED · **Password mechanism:** VERIFIED on staging · **Password on device:** VERIFIED
 - **Google UI:** NOT BUILT · **Google provider:** BLOCKED · **Google sign-in:** UNVERIFIED
 - **Username:** NOT BUILT · **BLOCKED** on schema + product decision
 
-## 9. Device validation — NOT DONE, and why
+## 9. Device validation — DONE
 
-**The physical device disconnected mid-phase.** `adb devices` returns an
-empty list and macOS reports no vivo device on USB. The APK built
-successfully and was **not** installed or launched.
+Physical **vivo V2250**, Android 15, standalone release APK, **Metro off**,
+against **real staging**. The phone was reconnected after the earlier
+disconnection and the full flow was run.
 
-**Therefore every on-device password row in §8 is UNVERIFIED, not PASS.**
-The screens compile, typecheck, lint clean and are wired into navigation —
-but nobody has tapped them. That is a different claim from "it works", and
-this document does not make the stronger one.
+| # | Journey | Result | Evidence |
+|---|---|---|---|
+| A | Cold unauthenticated launch | **PASS** | Entry screen, correct hierarchy: primary "Continue with phone", secondary "Sign in with a password" |
+| B | **Wrong password / no password set** | **PASS** | `9990000001` has **no password**; message read *"That number and password don't match. You can sign in with a code instead."* — it did **not** reveal that the account exists without a password |
+| C | Recovery via code | **PASS** | "Forgot it? Sign in with a code instead" → phone → OTP → Customer Home |
+| D | Enrolment: mismatch guard | **PASS** | *"Those two passwords don't match."*, caught client-side, no network call |
+| E | Enrolment: save | **PASS** | "Password saved" with the follow-up copy |
+| F | Logout | **PASS** | Returned to the entry screen |
+| G | **Password sign-in** | **PASS** | Same number + the enrolled password → session established → **Customer Home** |
+| H | Session restore | **PASS** | Backgrounded and relaunched → still signed in, Customer Home |
 
-**What IS verified, and it is the substantive part:** the credential
-*mechanism* was proven against the real staging project by direct probe
-before any UI existed (§3) — enrolment, sign-in, identity equality, role
-claim on the password path, and rejection of a wrong password. The UI is a
-thin layer over calls whose behaviour is established.
+**Journey B is the one worth re-reading.** The account genuinely had no
+password at that moment, and the screen still refused to say so. That is
+the enumeration guard working on a real device, not just in a unit test.
 
-**APK built (not installed):**
+### 9.1 Three things that happened during the run, recorded
+
+**A call overlay interrupted the run and input was stopped.** Truecaller's
+after-call popup appeared over Craavee, showing a personal contact. Input
+was halted immediately: the overlay puts CALL / MESSAGE / WHATSAPP buttons
+under the same coordinates the automation was tapping, and a stray tap
+could have dialled or messaged a real person. It was dismissed with BACK
+only — which cannot trigger a call action — and Craavee's foreground state
+was re-asserted before any further tap.
+
+**Screen capture is blocked by the OS on the password screens.**
+`screencap` returns `Failed to take screenshot. Status: -1` while a
+`secureTextEntry` field is focused — vivo's Funtouch refusing capture of a
+password field. That is **correct OEM behaviour, not a defect**, and it is
+arguably a small security win. Validation continued via
+`uiautomator dump`, which reads the view hierarchy (text and bounds) and
+is unaffected. Coordinates were then taken from real element bounds rather
+than estimated from pixels, which is more reliable anyway.
+
+**Google Password Manager offered to save the test credential and was
+declined.** The offer itself is evidence the form is correctly structured
+for autofill. It was dismissed with BACK rather than "Never" — "Never"
+sets a persistent do-not-offer preference on the owner's Google account,
+and neither storing a throwaway test password in a personal password
+manager nor changing an account preference was mine to do.
+
+### 9.2 Staging state created by this validation
+
+A password now exists on **`919990000001`** (the primary seeded customer
+test account) and on **`919990000009`** (from the earlier probe). Both are
+seeded test accounts. No account was created, no role granted, no
+production system touched. Neither value was printed, committed, or saved
+to a password manager; both exist only in a local scratchpad.
+
+**This is a real change to shared staging state** — anyone else testing
+with `919990000001` should know it now has a password, though OTP still
+works for it exactly as before.
+
+### 9.3 APK
 
 | Field | Value |
 |---|---|
 | Path | `apps/customer-runner/android/app/build/outputs/apk/release/app-release.apk` |
 | SHA-256 | `d8d60347b52c0c108fe220269cb0eeaad6cba2801a392d973f64a5836a521844` |
 | Package / version | `com.craavee.app` / 1.0.0 |
-| Build | `assembleRelease`, `BUILD SUCCESSFUL in 41s` |
-
-**To finish this:** reconnect the phone and run — entry → "Sign in with a
-password" → wrong password (expect the non-enumerating message) → back →
-code sign-in → Account → Password → set one → sign out → sign in with it →
-confirm Customer Home. Roughly five minutes with the device attached.
+| Build | release, JS bundled, **verified running with Metro off** |
+| Signing | debug keystore — staging QA only, **not distributable** |
 
 ## 10. Known limitations
 
