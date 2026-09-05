@@ -30,10 +30,9 @@ import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import type { CatalogProduct } from "../../hooks/useCatalog";
-import { haptic } from "../../lib/haptics";
 import { Price } from "../ui/Price";
 import { ProductImage } from "../ui/ProductImage";
-import { QtyStepper } from "../ui/QtyStepper";
+import { CartAction } from "../ui/CartAction";
 
 function ProductCardImpl({
   product,
@@ -95,31 +94,18 @@ function ProductCardImpl({
           // Not colour alone: the word is present, and the tile above is
           // dimmed. A red dot would fail for a colour-blind customer.
           <Text className="text-xs font-semibold text-mango">Sold out</Text>
-        ) : qtyInCart > 0 ? (
-          <QtyStepper
+        ) : onAdd ? (
+          // One component owns both states and the transition between them.
+          // Swapping two separate controls made the most frequent action in
+          // the product read as a glitch rather than as feedback.
+          <CartAction
             qty={qtyInCart}
             productName={product.name}
+            onAdd={() => onAdd(product.id)}
             onIncrement={() => onIncrement?.(product.id)}
             onDecrement={() => onDecrement?.(product.id)}
-            testIDPrefix={`cart-${product.id}`}
+            testIDPrefix={product.id}
           />
-        ) : onAdd ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Add ${product.name} to cart`}
-            hitSlop={8}
-            onPress={() => {
-              // A committed state change the customer may not be looking
-              // at - exactly what the haptics rules reserve `success` for.
-              haptic("success");
-              onAdd(product.id);
-            }}
-            testID={`add-${product.id}`}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            className="self-start rounded-full border border-brand/30 bg-brand/10 px-5 py-1.5"
-          >
-            <Text className="text-sm font-bold text-brand">Add</Text>
-          </Pressable>
         ) : null}
       </View>
     </View>
