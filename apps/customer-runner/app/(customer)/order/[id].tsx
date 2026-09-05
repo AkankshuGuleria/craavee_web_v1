@@ -6,6 +6,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import type { PaymentIntent } from "@craavee/api-contracts";
 
 import { ErrorState, SkeletonList, StaleBanner, StatusPill } from "../../../components/ui";
+import { OrderTimeline } from "../../../components/orders/OrderTimeline";
+import { buildTimeline } from "../../../lib/orders/timeline";
 import { rupees } from "../../../lib/format";
 import { useOrder } from "../../../hooks/useOrder";
 import { usePaymentCheckout } from "../../../hooks/usePaymentCheckout";
@@ -148,6 +150,30 @@ export default function OrderScreen() {
             </Link>
           ) : null}
         </View>
+
+        {/* Slice CX-F1: progression built from the order's OWN recorded
+            timestamps. No estimate, no map, no "4 minutes away" - the
+            schema records no promise and no location, so none is shown.
+            Hidden while payment is still pending, where the only honest
+            thing to say is already in the banner above. */}
+        {!awaitingPayment ? (
+          <View className="mb-5 rounded-2xl border border-inkdeep/10 bg-white p-4">
+            <Text className="mb-3 text-xs font-semibold uppercase tracking-wide text-inkdeep/50">
+              Progress
+            </Text>
+            <OrderTimeline
+              steps={buildTimeline(o.status, {
+                placedAt: o.placedAt,
+                confirmedAt: o.confirmedAt,
+                packedAt: o.packedAt,
+                assignedAt: o.assignedAt,
+                pickedUpAt: o.pickedUpAt,
+                deliveredAt: o.deliveredAt,
+                cancelledAt: o.cancelledAt,
+              })}
+            />
+          </View>
+        ) : null}
 
         <Text className="mb-2 text-xs font-semibold uppercase tracking-wide text-inkdeep/50">Items</Text>
         <View className="rounded-xl border border-inkdeep/10 bg-white">
