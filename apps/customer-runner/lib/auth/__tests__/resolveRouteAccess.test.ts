@@ -19,11 +19,11 @@ test("no session, on an auth screen: allow", () => {
 test("no session, on a protected route: redirect to phone entry", () => {
   assert.deepEqual(resolveRouteAccess({ isLoading: false, role: null, segment: "customer" }), {
     action: "redirect",
-    to: "/(auth)/phone",
+    to: "/(auth)/welcome",
   });
   assert.deepEqual(resolveRouteAccess({ isLoading: false, role: null, segment: "runner" }), {
     action: "redirect",
-    to: "/(auth)/phone",
+    to: "/(auth)/welcome",
   });
 });
 

@@ -8,5 +8,5 @@ import { Redirect } from "expo-router";
  * user to the phone-entry screen (Phase 3 §6's flow starts there).
  */
 export default function Index() {
-  return <Redirect href="/(auth)/phone" />;
+  return <Redirect href="/(auth)/welcome" />;
 }

@@ -17,7 +17,7 @@
 
 export type Role = "customer" | "packer" | "runner" | "admin";
 
-export type RouteDestination = "/(auth)/phone" | "/(customer)" | "/(runner)" | "/unsupported-role";
+export type RouteDestination = "/(auth)/welcome" | "/(customer)" | "/(runner)" | "/unsupported-role";
 
 export type RouteAccessDecision = { action: "allow" } | { action: "redirect"; to: RouteDestination };
 
@@ -65,7 +65,11 @@ export function resolveRouteAccess({
   if (isLoading) return null;
 
   if (!role) {
-    return segment === "auth" ? { action: "allow" } : { action: "redirect", to: "/(auth)/phone" };
+    // The entry screen, not the bare phone field: an unauthenticated
+    // visitor should be told what Craavee is before being asked for their
+    // number. Everything inside the (auth) group stays allowed, so the
+    // welcome -> phone -> verify progression is not re-redirected.
+    return segment === "auth" ? { action: "allow" } : { action: "redirect", to: "/(auth)/welcome" };
   }
 
   const destination = destinationFor(role);
