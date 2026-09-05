@@ -1,53 +1,93 @@
 /**
- * Search.
+ * Search — the same shopping query as Browse, entered by typing.
  *
- * The whole screen is built around one goal: the customer should feel
- * that results are already there, not that they submitted a request and
- * waited. Three things do that work, none of them animation:
+ * Slice 2 built search as its own thing with its own results list. This
+ * slice folds it onto the shared `ProductQuery`, which is what lets a
+ * customer search "milk" and then narrow to Dairy, to Amul, to under
+ * fifty rupees, sorted by price - without search and browse disagreeing
+ * about what "filtered" means. Same query object, same feed hook, same
+ * results grid, same toolbar.
  *
- *   * `keepPreviousData` - the previous term's results stay on screen
- *     while the next term is in flight, dimmed rather than blanked.
- *   * a 5-minute cache - retyping a recent term costs no request at all.
- *   * 300ms debounce - a typed word is one request, not five.
+ * The query lives in route params (§13/§22), so going into a product and
+ * coming back restores the term, the category, the filters and the sort.
+ * The text field is seeded from those params and is the only piece of
+ * local state - it has to be, because it updates on every keystroke while
+ * the committed query updates only after the debounce.
  *
- * The states below are exhaustive on purpose. Every one of them has a way
- * out; none is a dead end.
+ * What makes it feel immediate is unchanged and measured: a 300ms
+ * debounce, request cancellation, a shared cache, and previous results
+ * kept on screen (dimmed) rather than blanked while the next term lands.
  */
-import { FlashList } from "@shopify/flash-list";
-import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
-import { EmptyState, ErrorState, Screen, SkeletonList, StaleBanner } from "../../components/ui";
-import { ProductCard } from "../../components/catalog/ProductCard";
-import { cartCount } from "../../lib/cart/logic.ts";
-import { useCartStore } from "../../lib/cart/store";
+import { CartBar } from "../../components/discovery/CartBar";
+import { CategoryRail } from "../../components/discovery/CategoryRail";
+import { FilterSheet, SortSheet } from "../../components/discovery/FilterSheet";
+import { ProductResults } from "../../components/discovery/ProductResults";
+import { ResultsToolbar } from "../../components/discovery/ResultsToolbar";
+import { EmptyState, Screen, StaleBanner } from "../../components/ui";
+import {
+  clearFilters,
+  fromParams,
+  hasAnyNarrowing,
+  toParams,
+  type ProductQuery,
+} from "../../lib/discovery/query";
+import { MIN_QUERY_LENGTH } from "../../lib/search/query";
 import { useDebounced } from "../../lib/useDebounced";
-import { MIN_QUERY_LENGTH, useProductSearch } from "../../hooks/useProductSearch";
+import { useFacets } from "../../hooks/useFacets";
+import { flattenFeed, useProductFeed } from "../../hooks/useProductFeed";
 import { theme } from "../../lib/theme";
 
 export default function SearchScreen() {
   const router = useRouter();
-  const [text, setText] = useState("");
-  const debounced = useDebounced(text, 300);
+  const params = useLocalSearchParams();
   const inputRef = useRef<TextInput>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
 
-  const results = useProductSearch(debounced);
+  const committed = useMemo(() => fromParams(params as Record<string, unknown>), [params]);
 
-  const items = useCartStore((s) => s.items);
-  const add = useCartStore((s) => s.add);
-  const increment = useCartStore((s) => s.increment);
-  const decrement = useCartStore((s) => s.decrement);
-  const count = cartCount(items);
+  // Local text is the only non-route state, and only because it changes
+  // per keystroke while the route changes per debounce.
+  const [text, setText] = useState(committed.q);
+  const debouncedText = useDebounced(text, 300);
 
-  const trimmed = debounced.trim();
-  const tooShort = trimmed.length > 0 && trimmed.length < MIN_QUERY_LENGTH;
-  const idle = trimmed.length === 0;
+  // Push the debounced term into the route so it participates in the same
+  // query object as the filters, and survives navigation.
+  useEffect(() => {
+    if (debouncedText.trim() === committed.q.trim()) return;
+    router.setParams(toParams({ ...committed, q: debouncedText }));
+  }, [debouncedText, committed, router]);
 
-  // The user has typed ahead of the debounce, or a new term is loading
-  // over an old one. Both mean "what you are looking at is not the answer
-  // to what you have typed" - shown as a dim, not a spinner.
-  const settling = text.trim() !== trimmed || (results.isFetching && results.isPlaceholderData);
+  const query: ProductQuery = useMemo(
+    () => ({ ...committed, q: debouncedText }),
+    [committed, debouncedText],
+  );
+
+  const facets = useFacets(query.category);
+
+  const term = query.q.trim();
+  const tooShort = term.length > 0 && term.length < MIN_QUERY_LENGTH;
+  // A bare search screen with no term and no filters has nothing to ask
+  // the server for; it shows category browsing instead of empty results.
+  const idle = term.length === 0 && !hasAnyNarrowing({ ...query, q: "" });
+
+  const feed = useProductFeed(query, !idle && !tooShort);
+  const { products, total } = flattenFeed(feed.data?.pages);
+
+  const update = useCallback(
+    (next: ProductQuery) => {
+      setText(next.q);
+      router.setParams(toParams(next));
+    },
+    [router],
+  );
+
+  const settling =
+    text.trim() !== term || (feed.isFetching && feed.isPlaceholderData);
 
   return (
     <Screen padded={false} edges={["top"]}>
@@ -65,10 +105,9 @@ export default function SearchScreen() {
             autoCorrect={false}
             autoCapitalize="none"
             // NOT `clearButtonMode`: that is iOS-only, so it produced TWO
-            // clear controls on iOS (the native grey circle plus ours) and
-            // one on Android. The custom control below is used on both, so
-            // the affordance is single and identical - and it carries a real
-            // accessibilityLabel, which the native one does not let us set.
+            // clear controls on iOS and one on Android. The custom control
+            // below is used on both, and carries a real accessibilityLabel
+            // which the native one does not let us set.
             accessibilityLabel="Search products"
             accessibilityHint="Results update as you type"
             testID="search-input"
@@ -102,60 +141,63 @@ export default function SearchScreen() {
         </Pressable>
       </View>
 
+      {/* Category browsing is available from the zero state AND alongside
+          results, which is what connects search to classification (§22). */}
+      <View className="pb-2">
+        <CategoryRail
+          categories={facets.categories}
+          selected={query.category}
+          onSelect={(c) => update({ ...query, category: c })}
+          testID="search-category-rail"
+        />
+      </View>
+
       {idle ? (
+        // §23: browse-by-category, not invented "trending searches".
         <EmptyState
           title="What are you after?"
-          hint="Search by product, brand or category — milk, Amul, snacks."
+          hint="Search by product, brand or category — or pick a category above."
         />
       ) : tooShort ? (
         <EmptyState title="Keep typing" hint={`At least ${MIN_QUERY_LENGTH} characters.`} />
-      ) : results.isPending ? (
-        <View className="px-4">
-          <SkeletonList rows={4} />
-        </View>
-      ) : results.isError && !results.data ? (
-        <ErrorState
-          title="Couldn't run that search"
-          detail="Check your connection and try again."
-          onRetry={() => results.refetch()}
-        />
-      ) : results.data && results.data.length === 0 ? (
-        <EmptyState
-          title={`No matches for "${trimmed}"`}
-          hint="Try a shorter word, or a brand name."
-        />
       ) : (
-        <View className="flex-1" style={{ opacity: settling ? 0.55 : 1 }}>
-          {/* Results present but the last refresh failed: the list is real
-              but no longer known to be current. Never presented as fresh. */}
-          {results.isError ? (
+        <>
+          <ResultsToolbar
+            query={query}
+            total={feed.isPending ? null : total}
+            isSettling={settling}
+            onOpenFilters={() => setFiltersOpen(true)}
+            onOpenSort={() => setSortOpen(true)}
+            onChange={update}
+          />
+
+          {feed.isError && products.length > 0 ? (
             <View className="mb-2 px-4">
-              <StaleBanner kind="stale" onRetry={() => results.refetch()} />
+              <StaleBanner kind="stale" onRetry={() => feed.refetch()} />
             </View>
           ) : null}
 
-          <FlashList
-            data={results.data}
-            numColumns={2}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => (
-              <View className={index % 2 === 0 ? "pr-2" : "pl-2"}>
-                <ProductCard
-                  product={item}
-                  qtyInCart={items[item.id] ?? 0}
-                  onAdd={add}
-                  onIncrement={increment}
-                  onDecrement={decrement}
-                />
-              </View>
-            )}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: count > 0 ? 96 : 24 }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+          <ProductResults
+            products={products}
+            isPending={feed.isPending}
+            isError={feed.isError}
+            isSettling={settling}
+            hasNarrowing
+            onRetry={() => feed.refetch()}
+            onClearFilters={() => update(clearFilters(query))}
+            onEndReached={() => {
+              if (feed.hasNextPage && !feed.isFetchingNextPage) void feed.fetchNextPage();
+            }}
+            isFetchingNextPage={feed.isFetchingNextPage}
+            emptyTitle={term ? `No matches for "${term}"` : "No products match"}
+            emptyHint="Try a shorter word, a brand name, or remove a filter."
+            bottomPadding={104}
             testID="search-results"
           />
-        </View>
+        </>
       )}
+
+      <CartBar />
     </Screen>
   );
 }

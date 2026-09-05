@@ -50,6 +50,9 @@ export default function CustomerLayout() {
       {/* Slice 2. Search owns the header itself (the field IS the header),
           so it renders headerless; product detail keeps the standard bar. */}
       <Stack.Screen name="search" options={{ title: "Search", headerShown: false }} />
+      {/* Slice 3. Browse owns its title dynamically (the selected
+          category), so it sets it from the screen rather than here. */}
+      <Stack.Screen name="browse" options={{ title: "Browse", headerShown: true }} />
       <Stack.Screen
         name="product/[id]"
         options={{ title: "Product", headerShown: true }}
