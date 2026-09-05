@@ -1,52 +1,55 @@
 /**
- * Home / catalog.
+ * Home — a structured storefront, not a product feed.
  *
- * Slice 2 changed the composition, not the data. It was a single column
- * of full-width white cards, which read as a listing rather than a
- * storefront - you could see three products and a lot of border.
+ * Slice 2 made the products look right. This slice changes what the
+ * screen is FOR. It was header → search → one long grid, which answers
+ * "what is in stock?" and nothing else. A customer arriving with an
+ * intent ("something to drink", "under fifty rupees") had to scroll and
+ * hope.
  *
- * Now: a two-column grid of image-led tiles on the paper ground, under a
- * header and a search entry. Roughly six products are visible at once
- * instead of three, and the thing the eye lands on is a product rather
- * than a rectangle.
+ * The structure now answers four questions in order:
  *
- * The search entry is a button that opens a dedicated screen, not an
- * inline field. An inline field on Home would either steal focus and
- * raise the keyboard over the catalog on arrival, or sit inert and
- * decorative. A dedicated screen also gives search its own back stack
- * entry, so dismissing it returns the customer exactly where they were.
+ *   Where am I?      the header
+ *   What can I get?  the category rail - real `products.category` values
+ *   How do I narrow? search, and Browse all with filters
+ *   What's here?     per-category sections, each capped, each with a way
+ *                    into the full filtered results
  *
- * NO fabricated merchandising. There are no "trending", "popular" or
- * "recommended" sections because the backend has no such data and the
- * brief forbids inventing it. Products are grouped by the `category`
- * column that genuinely exists, and the heading only renders when there
- * is more than one category - one heading above the only group is noise.
+ * Sections are capped at four products and offer "See all". A section
+ * that renders its whole category is just the old flat grid with
+ * headings; capping it is what turns the home screen into an index
+ * rather than a dump.
+ *
+ * NOTHING IS FABRICATED. There is no "trending", "popular", "recommended"
+ * or "recently viewed" section, because the backend records no
+ * popularity, no view history and no purchase history. Sections are
+ * category groupings of the real catalogue, ordered by the store's own
+ * `sort_order`. The moment real signals exist, `Section` below is the
+ * place they render.
  */
 import { FlashList } from "@shopify/flash-list";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { CartBar } from "../../components/discovery/CartBar";
+import { CategoryRail } from "../../components/discovery/CategoryRail";
 import { EmptyState, ErrorState, Screen, SkeletonList } from "../../components/ui";
 import { ProductCard } from "../../components/catalog/ProductCard";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { useCartStore } from "../../lib/cart/store";
 import { cartCount } from "../../lib/cart/logic.ts";
-import { rupees } from "../../lib/format";
-import { useCart } from "../../hooks/useCart";
 import { type CatalogProduct, useCatalog } from "../../hooks/useCatalog";
+import { useFacets } from "../../hooks/useFacets";
 import { useProfile } from "../../hooks/useProfile";
 
-/** A grid row is either a category heading or a pair of products. */
+/** How many products a home section shows before "See all". */
+const SECTION_LIMIT = 4;
+
 type Row =
-  | { kind: "header"; key: string; title: string }
+  | { kind: "sectionHeader"; key: string; category: string; total: number }
   | { kind: "pair"; key: string; left: CatalogProduct; right?: CatalogProduct };
 
-/**
- * Built manually rather than with `numColumns`, because a flat two-column
- * list cannot interleave full-width section headings. This keeps one
- * FlashList (and its recycling) instead of nesting a list per section.
- */
 function buildRows(products: CatalogProduct[]): Row[] {
   const byCategory = new Map<string, CatalogProduct[]>();
   for (const p of products) {
@@ -55,32 +58,71 @@ function buildRows(products: CatalogProduct[]): Row[] {
     else byCategory.set(p.category, [p]);
   }
 
-  const multi = byCategory.size > 1;
   const rows: Row[] = [];
-
   for (const [category, list] of byCategory) {
-    if (multi) rows.push({ kind: "header", key: `h:${category}`, title: category });
-    for (let i = 0; i < list.length; i += 2) {
-      rows.push({ kind: "pair", key: `p:${list[i].id}`, left: list[i], right: list[i + 1] });
+    rows.push({
+      kind: "sectionHeader",
+      key: `h:${category}`,
+      category,
+      total: list.length,
+    });
+    const shown = list.slice(0, SECTION_LIMIT);
+    for (let i = 0; i < shown.length; i += 2) {
+      rows.push({ kind: "pair", key: `p:${shown[i].id}`, left: shown[i], right: shown[i + 1] });
     }
   }
-
   return rows;
 }
 
 export default function CustomerHome() {
+  const router = useRouter();
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
   const catalog = useCatalog();
+  const facets = useFacets();
 
   const items = useCartStore((s) => s.items);
   const add = useCartStore((s) => s.add);
   const increment = useCartStore((s) => s.increment);
   const decrement = useCartStore((s) => s.decrement);
-  const cart = useCart();
   const count = cartCount(items);
 
   const rows = useMemo(() => buildRows(catalog.data ?? []), [catalog.data]);
+
+  const header = (
+    <View>
+      <View className="px-4 pb-4">
+        <Link href="/search" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Search products"
+            accessibilityHint="Opens search"
+            testID="search-entry"
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            className="min-h-[48px] flex-row items-center rounded-full bg-white px-4"
+          >
+            <Text className="mr-2 shrink-0 text-base text-inkdeep/40">⌕</Text>
+            <Text className="flex-1 text-[15px] text-inkdeep/40" numberOfLines={1}>
+              Search snacks, drinks, essentials
+            </Text>
+          </Pressable>
+        </Link>
+      </View>
+
+      <View className="-mx-4 pb-3">
+        <CategoryRail
+          categories={facets.categories}
+          selected={null}
+          // Selecting from home is a NEW destination, so this pushes
+          // rather than replacing - back should return to home.
+          onSelect={(c) =>
+            router.push(c ? `/browse?category=${encodeURIComponent(c)}` : "/browse")
+          }
+          testID="home-category-rail"
+        />
+      </View>
+    </View>
+  );
 
   return (
     // Phase 10D: `Screen` replaces `pt-14`. That magic number was eyeballed
@@ -108,34 +150,13 @@ export default function CustomerHome() {
         </Pressable>
       </View>
 
-      <View className="px-4 pb-4">
-        <Link href="/search" asChild>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Search products"
-            accessibilityHint="Opens search"
-            testID="search-entry"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-            className="min-h-[48px] flex-row items-center rounded-full bg-white px-4"
-          >
-            <Text className="mr-2 shrink-0 text-base text-inkdeep/40">⌕</Text>
-            {/* `flex-1` + numberOfLines: at 360dp the longer copy was hard
-                clipped mid-word ("drinks,") rather than ellipsised, which
-                reads as a rendering fault rather than as truncation. */}
-            <Text className="flex-1 text-[15px] text-inkdeep/40" numberOfLines={1}>
-              Search snacks, drinks, essentials
-            </Text>
-          </Pressable>
-        </Link>
-      </View>
-
       {catalog.isPending ? (
         <View className="px-4">
           <SkeletonList rows={4} height={180} />
         </View>
       ) : catalog.isError && !catalog.data ? (
         <ErrorState
-          title="Couldn't load the menu"
+          title="Couldn't load the store"
           detail="Check your connection and try again."
           onRetry={() => catalog.refetch()}
         />
@@ -148,14 +169,36 @@ export default function CustomerHome() {
         <FlashList
           data={rows}
           keyExtractor={(row) => row.key}
+          ListHeaderComponent={header}
           renderItem={({ item: row }) =>
-            row.kind === "header" ? (
-              <Text
-                accessibilityRole="header"
-                className="mb-3 mt-1 text-xs font-bold uppercase tracking-wider text-inkdeep/45"
-              >
-                {row.title}
-              </Text>
+            row.kind === "sectionHeader" ? (
+              <View className="mb-3 mt-2 flex-row items-baseline justify-between">
+                <Text
+                  accessibilityRole="header"
+                  className="flex-1 text-base font-bold text-inkdeep"
+                  numberOfLines={1}
+                >
+                  {row.category}
+                </Text>
+                {/* Unconditional, not `total > SECTION_LIMIT`. With the
+                    current catalogue the largest category holds exactly
+                    four products, so a conditional link would NEVER
+                    render and every section would be a dead end with no
+                    way into its filtered view. The affordance is also the
+                    only route to that category's filters and sort, which
+                    is worth offering even when nothing is hidden. */}
+                <Link href={`/browse?category=${encodeURIComponent(row.category)}`} asChild>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`See all ${row.total} in ${row.category}`}
+                    hitSlop={10}
+                    testID={`see-all-${row.category}`}
+                    className="min-h-[32px] shrink-0 justify-center pl-3"
+                  >
+                    <Text className="text-sm font-semibold text-brand">See all</Text>
+                  </Pressable>
+                </Link>
+              </View>
             ) : (
               <View className="flex-row">
                 <View className="flex-1 pr-2">
@@ -188,28 +231,7 @@ export default function CustomerHome() {
         />
       )}
 
-      {count > 0 ? (
-        // `pb-6` was a guess at the home indicator. SafeAreaView's bottom
-        // edge is excluded above (edges={["top"]}) precisely so this bar can
-        // own its own inset and sit flush with the indicator.
-        <View className="absolute inset-x-0 bottom-0 px-4 pb-8">
-          <Link href="/cart" asChild>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`View cart, ${count} ${count === 1 ? "item" : "items"}, ${rupees(cart.indicativeSubtotal)}`}
-              className="min-h-[56px] flex-row items-center justify-between rounded-2xl bg-brand px-5"
-              testID="cart-fab"
-            >
-              <Text className="shrink-0 pr-2 text-base font-semibold text-white">
-                {count} {count === 1 ? "item" : "items"}
-              </Text>
-              <Text className="shrink-0 pr-1 text-base font-semibold text-white">
-                {rupees(cart.indicativeSubtotal)} · View cart
-              </Text>
-            </Pressable>
-          </Link>
-        </View>
-      ) : null}
+      <CartBar />
     </Screen>
   );
 }
