@@ -1,6 +1,7 @@
 import { Link, router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
+import { QtyStepper } from "../../components/ui";
 import { useCartStore } from "../../lib/cart/store";
 import { rupees } from "../../lib/format";
 import { useCart, type CartLine } from "../../hooks/useCart";
@@ -121,20 +122,33 @@ function CartRow({
             <Text className="mt-1 text-xs font-semibold text-mango">Currently sold out.</Text>
           ) : null}
         </View>
-        <Text className="text-sm font-semibold text-brand-deep">{rupees(line.lineTotal)}</Text>
+        <Text className="shrink-0 pr-1 text-sm font-semibold text-brand-deep">
+          {rupees(line.lineTotal)}
+        </Text>
       </View>
 
       <View className="mt-3 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-4 rounded-full bg-paper px-2">
-          <Pressable accessibilityLabel="Decrease" hitSlop={8} onPress={onDec} testID={`row-dec-${line.productId}`}>
-            <Text className="px-2 text-lg font-bold text-brand">−</Text>
-          </Pressable>
-          <Text className="min-w-4 text-center text-sm font-semibold text-inkdeep">{line.qty}</Text>
-          <Pressable accessibilityLabel="Increase" hitSlop={8} onPress={onInc} testID={`row-inc-${line.productId}`}>
-            <Text className="px-2 text-lg font-bold text-brand">+</Text>
-          </Pressable>
-        </View>
-        <Pressable accessibilityRole="button" onPress={onRemove} testID={`row-remove-${line.productId}`}>
+        {/* Slice 2: the shared stepper. This row previously hand-rolled its
+            own, which is why the cart's controls looked and behaved subtly
+            differently from the catalog's - and why its buttons announced a
+            bare "Decrease" with no product name, which is meaningless in a
+            screen reader's linear read of a list of items. */}
+        <QtyStepper
+          qty={line.qty}
+          productName={line.product?.name ?? "this item"}
+          onIncrement={onInc}
+          onDecrement={onDec}
+          size="md"
+          testIDPrefix={`row-${line.productId}`}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${line.product?.name ?? "item"} from cart`}
+          hitSlop={12}
+          onPress={onRemove}
+          testID={`row-remove-${line.productId}`}
+          className="min-h-[44px] justify-center px-1"
+        >
           <Text className="text-xs font-semibold text-mango">Remove</Text>
         </Pressable>
       </View>

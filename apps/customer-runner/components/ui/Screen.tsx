@@ -12,9 +12,24 @@
  * `edges={["bottom"]}`.
  */
 import type { ReactNode } from "react";
-import { View, ScrollView, type ViewStyle } from "react-native";
+import { Platform, View, ScrollView, type ViewStyle } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 import { theme } from "../../lib/theme";
+
+/**
+ * Web only. The customer app is a phone layout rendered in a desktop
+ * browser, so without a cap every screen stretches to the window: the
+ * two-column product grid became two billboards, and a text field ran
+ * the full width of the monitor. Found during Slice 2 web validation.
+ *
+ * 720 rather than a phone width - pinning a hard 400px column on a
+ * desktop is its own kind of wrong - and centred, so it reads as a
+ * deliberate column rather than content stuck to the left edge.
+ *
+ * Native is untouched: a phone viewport is already narrower than this,
+ * so the constraint never binds there.
+ */
+const WEB_MAX_WIDTH = 720;
 
 interface ScreenProps {
   children: ReactNode;
@@ -36,7 +51,15 @@ export function Screen({
   testID,
 }: ScreenProps) {
   const inner = (
-    <View style={[{ flex: 1, paddingHorizontal: padded ? 16 : 0 }, style]}>{children}</View>
+    <View
+      style={[
+        { flex: 1, paddingHorizontal: padded ? 16 : 0 },
+        Platform.OS === "web" ? { maxWidth: WEB_MAX_WIDTH, width: "100%", alignSelf: "center" } : null,
+        style,
+      ]}
+    >
+      {children}
+    </View>
   );
   return (
     <SafeAreaView
